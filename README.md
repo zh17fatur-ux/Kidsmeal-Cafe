@@ -133,3 +133,100 @@ Frontend menggunakan @supabase/supabase-js 2.112.4 dari CDN.
 - User dengan histori tidak bisa dihapus permanen; gunakan Nonaktifkan.
 - Master Account tidak dapat dinonaktifkan, dihapus, atau diturunkan dari Approver.
 - Approver biasa dapat melihat Manajemen User tetapi tidak dapat mengubah user.
+
+## Perubahan v16
+- Memperbaiki bug Master Account tidak terbaca di frontend.
+- Query profile sekarang mengambil is_master dan active.
+- Dropdown ubah role serta tombol manajemen user akan tampil untuk Master.
+
+## Perubahan v17
+- Siswa yang dipilih di Input Pesanan kini tampil lebih tegas.
+- Baris siswa terpilih memiliki border tebal, background jelas, nama lebih bold, dan badge "Dipilih".
+- Ringkasan siswa terpilih juga dibuat lebih bold.
+- Tampilan siswa terpilih di Pembayaran menggunakan gaya yang sama.
+
+## Perubahan v18
+- Admin mobile sekarang dapat mengubah status pesanan langsung dari kartu Rekap Pesanan Hari Ini.
+- Pilihan status: Sementara Dibuat / Selesai.
+- Kontrol status dinonaktifkan bila pesanan Menunggu Approval Batal atau sudah Dibatalkan.
+- Setelah status diubah, data dimuat ulang agar tagihan dan rekap mengikuti status terbaru.
+
+## Perubahan v19
+- Kontrol status mobile diganti dari dropdown menjadi dua tombol besar: Sementara Dibuat dan Selesai.
+- Tombol aktif dibuat lebih tegas untuk layar HP.
+- Update status memverifikasi row hasil update dan menampilkan pesan bila ditolak.
+- Pesanan active maupun cancel_rejected dapat diubah status; cancel_pending/cancelled tetap terkunci.
+
+## Perubahan v20
+- Admin dan Approver sama-sama dapat mengubah status pesanan.
+- Berlaku di tampilan mobile dan desktop.
+- Status yang dapat dipilih: Sementara Dibuat / Selesai.
+- Pesanan Menunggu Approval Batal atau Dibatalkan tetap terkunci.
+- Alur pembatalan tidak berubah: Admin mengajukan, Approver menyetujui/menolak.
+
+## Perubahan v21
+- Tampilan Pembayaran di mobile disesuaikan penuh untuk layar kecil.
+- Riwayat pembayaran mobile memakai kartu, bukan tabel horizontal.
+- Ringkasan siswa terpilih pada Pembayaran dibuat lebih tegas.
+- Tombol Simpan Pembayaran dibuat penuh/lebar di mobile.
+- Pada Input Pesanan, menu yang sudah dipilih diberi background, border, bold, dan badge "Dipilih × jumlah".
+- Klik nama/kartu menu juga menambahkan menu, tidak hanya tombol plus.
+- Highlight menu selalu mengikuti perubahan quantity di keranjang.
+
+## Perubahan v22 — Pesanan Sarapan
+- Input Pesanan memiliki checkbox "Apakah pesanan untuk sarapan?".
+- Pesanan sarapan disimpan di orders.is_breakfast.
+- Rekap Pesanan Hari Ini memiliki blok khusus "Pesanan Sarapan" di bagian atas.
+- Pesanan sarapan diberi badge 🌅 SARAPAN dan dihitung terpisah.
+- Pesanan biasa tetap muncul di bagian "Pesanan Lainnya".
+- Berlaku di desktop dan mobile.
+- Admin dan Approver dapat mengubah status Sementara Dibuat / Selesai.
+- Workflow pembatalan tetap sama.
+
+## Perubahan v23
+- Klik nama/kartu menu hanya memilih menu satu kali.
+- Klik berulang pada menu yang sama tidak lagi menambah quantity.
+- Tombol menu berubah menjadi tanda centang setelah dipilih.
+- Quantity 2 atau lebih hanya dapat diatur lewat tombol + / - di keranjang sebelum Simpan Pesanan.
+- Badge menu menampilkan "Dipilih" tanpa quantity agar tidak membingungkan.
+
+## Perubahan v24
+- Memperbaiki handler lama yang masih menambah qty setiap kali menu diklik.
+- Klik kartu/nama/tombol menu sekarang hanya memilih qty 1.
+- Klik berulang tidak mengubah quantity.
+- Tombol menu berubah menjadi tanda centang setelah dipilih.
+- Penambahan qty hanya melalui tombol + pada keranjang sebelum Simpan Pesanan.
+
+## Perubahan v25
+- Status Selesai memakai hijau soft, Sementara Dibuat memakai kuning soft.
+- Approver/Master dapat mengisi pembayaran langsung dari menu Tagihan.
+- Form pembayaran Tagihan mendukung Tunai dan Transfer, tanggal, nominal, dan catatan.
+- Manajemen User hanya terlihat untuk Master Account.
+- Rekap Mingguan memiliki baris TOTAL PER HARI dan total keseluruhan minggu.
+
+## Perubahan v26 — Tagihan Per Minggu
+- Menu Tagihan memiliki pilihan pekan berdasarkan tanggal.
+- Periode otomatis dihitung Senin–Minggu.
+- Saldo Awal membawa hutang atau deposit dari pekan-pekan sebelumnya.
+- Pesanan Pekan Ini hanya menghitung pesanan berstatus Selesai dalam periode terpilih.
+- Pembayaran Pekan Ini hanya menghitung pembayaran dalam periode terpilih.
+- Saldo Akhir = Saldo Awal + Pesanan Pekan Ini - Pembayaran Pekan Ini.
+- Deposit minggu sebelumnya otomatis menutup tagihan pada minggu berikutnya.
+- Approver/Master tetap dapat mengisi pembayaran langsung dari Tagihan.
+
+## Perubahan v27 — Tagihan Mingguan Tanpa Carry Hutang
+- Tagihan hanya tampil pada pekan saat pesanan terjadi.
+- Hutang/tagihan pekan sebelumnya tidak dibawa ke pekan berikutnya.
+- Hanya deposit yang dibawa ke pekan-pekan berikutnya sampai terpakai.
+- Deposit Awal otomatis mengurangi pesanan pada pekan terpilih.
+- Jika deposit masih tersisa, siswa tetap muncul pada pekan berikutnya sebagai Deposit Aktif.
+- Jika tidak ada pesanan, pembayaran, atau deposit aktif pada suatu pekan, siswa tidak ditampilkan.
+
+## Perubahan v28 — PWA Installable
+- Kidsmeal Cafe sekarang mendukung Progressive Web App (PWA).
+- Android/Chrome dapat menampilkan tombol Install App / Add to Home Screen.
+- Setelah di-install, aplikasi terbuka dalam mode standalone seperti aplikasi biasa.
+- Ikon aplikasi 192px dan 512px disertakan.
+- Service worker menggunakan network-first untuk halaman utama agar update GitHub → Vercel cepat masuk.
+- Data Supabase/API tetap menggunakan jaringan dan tidak dicache sebagai data offline.
+- File baru yang WAJIB ikut di-upload ke GitHub: manifest.webmanifest, sw.js, icon-192.png, icon-512.png.

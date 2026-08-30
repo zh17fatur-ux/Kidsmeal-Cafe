@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Kidsmeal Cafe Online</title>
+<title>Kidsmeal Cafe</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#ff4770">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kidsmeal">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#f7f8fb;--card:#fff;--text:#161923;--muted:#6b7280;--line:#e6e8ed;--brand:#ff4770;--soft:#fff0f4;--green:#06875f;--red:#d61f4b;--amber:#b45309;--radius:16px;--shadow:0 8px 28px rgba(20,24,35,.06)}
@@ -418,7 +425,9 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   <main>
     <div class="top">
       <div><h1 id="pageTitle">Dashboard</h1><div id="pageSub" class="muted">Data online Kidsmeal Cafe</div></div>
-      <div class="userbox"><b id="currentUserName">-</b> <span id="currentRole" class="pill">-</span><br><button id="logoutBtn" class="btn small" style="margin-top:5px">Logout</button></div>
+      <div class="userbox"><b id="currentUserName">-</b> <span id="currentRole" class="pill">-</span><br>
+<button id="installAppBtn" class="btn small primary hidden" style="margin-top:5px">📲 Install App</button>
+<button id="logoutBtn" class="btn small" style="margin-top:5px">Logout</button></div>
     </div>
 
     <section id="dashboardPage" class="page"></section>
@@ -1279,4 +1288,37 @@ function renderAll(){
 }
 bootstrap();
 </script>
+
+<script>
+let deferredInstallPrompt=null;
+
+window.addEventListener("beforeinstallprompt", event=>{
+  event.preventDefault();
+  deferredInstallPrompt=event;
+  const btn=document.getElementById("installAppBtn");
+  if(btn)btn.classList.remove("hidden");
+});
+
+document.addEventListener("click", async event=>{
+  const btn=event.target.closest("#installAppBtn");
+  if(!btn||!deferredInstallPrompt)return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt=null;
+  btn.classList.add("hidden");
+});
+
+window.addEventListener("appinstalled", ()=>{
+  deferredInstallPrompt=null;
+  const btn=document.getElementById("installAppBtn");
+  if(btn)btn.classList.add("hidden");
+});
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("/sw.js").catch(err=>console.warn("Service worker gagal:",err));
+  });
+}
+</script>
+
 </body></html>
