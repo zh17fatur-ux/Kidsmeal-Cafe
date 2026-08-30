@@ -124,3 +124,4 @@ Frontend menggunakan @supabase/supabase-js 2.112.4 dari CDN.
 - Ketik nama/kelas lalu langsung tap siswa dari daftar hasil.
 - Tidak perlu dropdown kedua.
 - Setelah siswa dipilih, tagihan langsung tampil.
+- 
