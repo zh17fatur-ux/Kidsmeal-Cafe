@@ -199,6 +199,81 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
 .mobile-progress-btn.active{border-color:#be123c;background:#fff1f4;color:#9f1239;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .mobile-progress-btn:disabled{opacity:.55;cursor:not-allowed}
 
+
+/* v21 - menu selection */
+.menu.selected{
+  background:#fff1f4;
+  border:2px solid #be123c;
+  font-weight:800;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.menu.selected b{font-weight:900}
+.menu-selected-badge{
+  display:inline-block;
+  margin-top:5px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#be123c;
+  color:#fff;
+  font-size:10px;
+  font-weight:900;
+}
+.menu.selected .circle{
+  background:#be123c;
+  color:#fff;
+  border-color:#be123c;
+}
+.menu-click-area{flex:1;min-width:0;cursor:pointer}
+
+/* v21 - payment mobile */
+#paymentsMobileHistory{display:none}
+.payment-mobile-card{
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:12px;
+  margin-bottom:9px;
+  background:#fff;
+  box-shadow:var(--shadow);
+}
+.payment-mobile-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+.payment-mobile-amount{
+  font-size:16px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.payment-summary-selected{
+  border:2px solid #be123c;
+  background:#fff1f4;
+  border-radius:12px;
+  padding:12px;
+}
+@media(max-width:650px){
+  #paymentsPage .grid.two{display:block}
+  #paymentsPage .card{margin-bottom:12px}
+  #paymentsPage #paymentResults{max-height:210px}
+  #paymentsPage #paymentSummary{font-size:13px;line-height:1.55}
+  #paymentsPage #savePayment{width:100%;font-weight:900;min-height:48px}
+  #paymentsPage .tablewrap{display:none}
+  #paymentsMobileHistory{display:block}
+  #paymentsPage input,
+  #paymentsPage select,
+  #paymentsPage textarea{font-size:16px}
+  #paymentsPage .rowpick{
+    align-items:flex-start;
+    gap:8px;
+  }
+  #paymentsPage .rowpick .pill{
+    max-width:45%;
+    white-space:normal;
+    text-align:right;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -315,7 +390,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
           <div class="field"><label>Keterangan</label><textarea id="paymentNote" rows="2"></textarea></div>
           <button id="savePayment" class="btn primary">Simpan Pembayaran</button>
         </div>
-        <div class="card"><h3 style="margin-top:0">Riwayat Pembayaran</h3><div class="tablewrap"><table id="paymentsTable"></table></div></div>
+        <div class="card"><h3 style="margin-top:0">Riwayat Pembayaran</h3><div id="paymentsMobileHistory"></div><div class="tablewrap"><table id="paymentsTable"></table></div></div>
       </div>
     </section>
 
@@ -489,15 +564,27 @@ $("studentSearch").oninput=renderStudentSearch;
 function renderMenusForOrder(){
  const activeMenus=menus.filter(m=>m.active);const cats=["Semua",...new Set(activeMenus.map(m=>m.category))],old=$("menuFilter").value||"Semua";$("menuFilter").innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join("");if(cats.includes(old))$("menuFilter").value=old;
  const f=$("menuFilter").value||"Semua",list=activeMenus.filter(m=>f==="Semua"||m.category===f);
- $("menuGrid").innerHTML=list.map(m=>`<div class="menu"><div><b>${esc(m.name)}</b><div class="muted">${rp(m.price)} • ${esc(m.category)}</div></div><button class="circle" data-menu="${m.id}">+</button></div>`).join("");
- document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=()=>{cart[b.dataset.menu]=(cart[b.dataset.menu]||0)+1;renderCart()})
+ $("menuGrid").innerHTML=list.map(m=>{
+   const qty=cart[m.id]||0;
+   return `<div class="menu ${qty>0?"selected":""}">
+     <div class="menu-click-area" data-menu-card="${m.id}">
+       <b>${esc(m.name)}</b>
+       <div class="muted">${rp(m.price)} • ${esc(m.category)}</div>
+       ${qty>0?`<span class="menu-selected-badge">Dipilih × ${qty}</span>`:""}
+     </div>
+     <button class="circle" data-menu="${m.id}" aria-label="Tambah ${esc(m.name)}">${qty>0?qty:"+"}</button>
+   </div>`;
+ }).join("");
+ const addMenu=id=>{cart[id]=(cart[id]||0)+1;renderCart();renderMenusForOrder()};
+ document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();addMenu(b.dataset.menu)});
+ document.querySelectorAll("[data-menu-card]").forEach(el=>el.onclick=()=>addMenu(el.dataset.menuCard));
 }
 $("menuFilter").onchange=renderMenusForOrder;
 function renderCart(){
  const x=Object.entries(cart).filter(([_,q])=>q>0);
  $("cart").innerHTML=x.map(([id,q])=>{const m=menus.find(z=>z.id===id);return `<div class="cartrow"><div><b>${esc(m.name)}</b><div class="muted">${rp(m.price)}</div></div><div class="qty"><button data-qminus="${id}">−</button><b>${q}</b><button data-qplus="${id}">+</button></div><b>${rp(Number(m.price)*q)}</b></div>`}).join("")||'<div class="empty">Belum ada menu</div>';
- document.querySelectorAll("[data-qminus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qminus]--;if(cart[b.dataset.qminus]<=0)delete cart[b.dataset.qminus];renderCart()});
- document.querySelectorAll("[data-qplus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qplus]++;renderCart()});
+ document.querySelectorAll("[data-qminus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qminus]--;if(cart[b.dataset.qminus]<=0)delete cart[b.dataset.qminus];renderCart();renderMenusForOrder()});
+ document.querySelectorAll("[data-qplus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qplus]++;renderCart();renderMenusForOrder()});
  $("cartTotal").textContent=rp(x.reduce((a,[id,q])=>a+Number(menus.find(m=>m.id===id).price)*q,0))
 }
 $("saveOrder").onclick=async()=>{
@@ -508,7 +595,7 @@ $("saveOrder").onclick=async()=>{
  if(error){$("saveOrder").disabled=false;return alert(error.message)}
  const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
  const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
- if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();alert("Pesanan tersimpan online.")
+ if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
 }
 
 
@@ -713,7 +800,7 @@ function renderPaymentSearch(){
      const s=b.find(z=>z.id===selectedPaymentStudentId);
      if(s){
        $("paymentSearch").value=s.name;
-       $("paymentSummary").innerHTML=`<b>${esc(s.name)} • ${esc(s.class_name)}</b><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+       $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
      }
      renderPaymentSearch();
      renderPaymentsTable();
@@ -721,19 +808,35 @@ function renderPaymentSearch(){
  });
 
  if(!students.length){
-   $("paymentSummary").innerHTML='<b>Belum ada data siswa.</b>';
+   $("paymentSummary").classList.remove("payment-summary-selected");$("paymentSummary").innerHTML='<b>Belum ada data siswa.</b>';
  }else if(selectedPaymentStudentId){
    const s=b.find(z=>z.id===selectedPaymentStudentId);
    if(s){
-     $("paymentSummary").innerHTML=`<b>${esc(s.name)} • ${esc(s.class_name)}</b><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+     $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
    }
  }else{
-   $("paymentSummary").innerHTML='Pilih siswa untuk melihat tagihan.';
+   $("paymentSummary").classList.remove("payment-summary-selected");$("paymentSummary").innerHTML='Pilih siswa untuk melihat tagihan.';
  }
 }
 
 $("paymentSearch").oninput=renderPaymentSearch;
-function renderPaymentsTable(){let list=[...payments];if(selectedPaymentStudentId)list=list.filter(p=>p.student_id===selectedPaymentStudentId);$("paymentsTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th class="money">Nominal</th><th>Metode</th></tr></thead><tbody>${list.slice(0,60).map(p=>`<tr><td>${p.payment_date}</td><td>${esc(p.students?.name||"-")}</td><td class="money positive">${rp(p.amount)}</td><td>${esc(p.method)}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Belum ada pembayaran</td></tr>'}</tbody>`}
+function renderPaymentsTable(){
+ let list=[...payments];
+ if(selectedPaymentStudentId)list=list.filter(p=>p.student_id===selectedPaymentStudentId);
+ list=list.slice(0,60);
+ $("paymentsTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th class="money">Nominal</th><th>Metode</th></tr></thead><tbody>${list.map(p=>`<tr><td>${p.payment_date}</td><td>${esc(p.students?.name||"-")}</td><td class="money positive">${rp(p.amount)}</td><td>${esc(p.method)}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Belum ada pembayaran</td></tr>'}</tbody>`;
+ if($("paymentsMobileHistory")){
+   $("paymentsMobileHistory").innerHTML=list.map(p=>`
+     <div class="payment-mobile-card">
+       <div class="payment-mobile-head">
+         <div><b>${esc(p.students?.name||"-")}</b><div class="muted">${p.payment_date} • ${esc(p.method||"-")}</div></div>
+         <div class="payment-mobile-amount positive">${rp(p.amount)}</div>
+       </div>
+       ${p.note?`<div class="muted" style="margin-top:7px">${esc(p.note)}</div>`:""}
+     </div>
+   `).join("")||'<div class="empty">Belum ada pembayaran</div>';
+ }
+}
 $("savePayment").onclick=async()=>{if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});if(error)return alert(error.message);$("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.")}
 
 function renderApprovals(){
