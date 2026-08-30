@@ -193,6 +193,12 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   margin-top:10px;
 }
 
+
+.mobile-progress-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:4px}
+.mobile-progress-btn{min-height:46px;border:2px solid var(--line);border-radius:12px;background:#fff;font-weight:900;font-size:13px;padding:9px 8px;cursor:pointer}
+.mobile-progress-btn.active{border-color:#be123c;background:#fff1f4;color:#9f1239;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.mobile-progress-btn:disabled{opacity:.55;cursor:not-allowed}
+
 </style>
 </head>
 <body>
@@ -582,10 +588,10 @@ function renderTodayOrders(){
    }else if(o.status==="cancel_pending"){
      statusControl='<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
    }else if(profile?.role==="admin"){
-     statusControl=`<select data-progress-select-mobile="${o.id}">
-       <option value="preparing" ${eff==="preparing"?"selected":""}>Sementara Dibuat</option>
-       <option value="completed" ${eff==="completed"?"selected":""}>Selesai</option>
-     </select>`;
+     statusControl=`<div class="mobile-progress-buttons">
+       <button type="button" class="mobile-progress-btn ${eff==="preparing"?"active":""}" data-mobile-status="${o.id}" data-next-status="preparing">Sementara Dibuat</button>
+       <button type="button" class="mobile-progress-btn ${eff==="completed"?"active":""}" data-mobile-status="${o.id}" data-next-status="completed">Selesai</button>
+     </div>`;
    }else{
      statusControl=todayStatusBadge(o);
    }
@@ -606,18 +612,29 @@ function renderTodayOrders(){
    </div>`;
  }).join("") || '<div class="empty">Belum ada pesanan hari ini</div>';
 
- document.querySelectorAll("[data-progress-select-mobile]").forEach(sel=>{
-   sel.onchange=async()=>{
-     if(profile?.role!=="admin"){await loadData();renderAll();return}
-     const newStatus=sel.value;
+ document.querySelectorAll("[data-mobile-status]").forEach(btn=>{
+   btn.onclick=async()=>{
+     if(!["admin","approver"].includes(profile?.role)){ alert("Anda tidak memiliki izin mengubah status pesanan."); return; }
+     const id=btn.dataset.mobileStatus;
+     const newStatus=btn.dataset.nextStatus;
+     const order=orders.find(o=>o.id===id);
+     if(!order || order.progress_status===newStatus) return;
      const warning=newStatus==="completed"
-       ?"Ubah status menjadi Selesai? Pesanan akan masuk Rekap Mingguan dan menjadi tagihan siswa."
-       :"Ubah status menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
-     if(!confirm(warning)){await loadData();renderAll();return}
-     const {error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",sel.dataset.progressSelectMobile).eq("status","active");
-     if(error){alert(error.message);await loadData();renderAll();return}
-     await loadData();renderAll();
-   }
+       ?"Tandai pesanan sebagai Selesai? Pesanan akan masuk Rekap Mingguan dan tagihan siswa."
+       :"Kembalikan menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
+     if(!confirm(warning)) return;
+     document.querySelectorAll(`[data-mobile-status="${id}"]`).forEach(x=>x.disabled=true);
+     const {data,error}=await sb.from("orders")
+       .update({progress_status:newStatus})
+       .eq("id",id)
+       .in("status",["active","cancel_rejected"])
+       .select("id,progress_status,status")
+       .maybeSingle();
+     if(error){ alert("Gagal mengubah status: "+error.message); await loadData(); renderAll(); return; }
+     if(!data){ alert("Status tidak berubah. Pesanan mungkin sedang menunggu approval pembatalan atau sudah dibatalkan."); await loadData(); renderAll(); return; }
+     await loadData();
+     renderAll();
+   };
  });
  document.querySelectorAll("[data-today-cancel-mobile]").forEach(b=>b.onclick=()=>openCancel(b.dataset.todayCancelMobile));
 
@@ -633,7 +650,7 @@ function renderTodayOrders(){
      const {error}=await sb.from("orders")
        .update({progress_status:newStatus})
        .eq("id",sel.dataset.progressSelect)
-       .eq("status","active");
+       .in("status",["active","cancel_rejected"]);
 
      if(error){ alert(error.message); await loadData(); renderAll(); return; }
      await loadData(); renderAll();
@@ -851,23 +868,6 @@ function applyRoleNavigation(){
 }
 
 
-function bindMobileProgressControls(){
- document.querySelectorAll("[data-mobile-progress]").forEach(sel=>{
-   sel.onchange=async()=>{
-     const id=sel.dataset.mobileProgress;
-     const next=sel.value;
-     sel.disabled=true;
-     const {error}=await sb.from("orders").update({progress_status:next}).eq("id",id);
-     if(error){
-       alert("Gagal mengubah status: "+error.message);
-       sel.disabled=false;
-       return;
-     }
-     await loadData();
-     renderAll();
-   };
- });
-}
 
 function renderAll(){
  renderDashboard();
@@ -885,7 +885,6 @@ function renderAll(){
  renderMenuData();
  renderUsers();
  applyRoleNavigation();
- bindMobileProgressControls();
 }
 bootstrap();
 </script>
