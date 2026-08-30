@@ -710,17 +710,64 @@ $("menuStatusFilter").onchange=renderMenuData;
 $("addMenu").onclick=async()=>{const name=$("newMenuName").value.trim(),category=$("newMenuCategory").value.trim(),price=Number($("newMenuPrice").value||0);if(!name)return alert("Isi nama menu.");const {error}=await sb.from("menus").insert({name,category,price,active:true});if(error)return alert(error.message);$("newMenuName").value="";$("newMenuPrice").value="";await loadData();renderAll()}
 
 function renderUsers(){
- const isApprover=profile?.role==="approver";
- $("usersNav").classList.toggle("hidden",!isApprover);
- $("usersAccessNotice").innerHTML=isApprover?'Anda login sebagai <b>Approver</b>. Anda dapat mengubah role akun lain. Role akun Anda sendiri tidak dapat diubah dari sini.':'Halaman ini hanya dapat dikelola oleh <b>Approver</b>.';
- const q=$("userSearch").value.toLowerCase().trim();
- const list=profiles.filter(u=>!q||((u.full_name||"")+" "+(u.email||"")+" "+u.role).toLowerCase().includes(q));
- $("usersTable").innerHTML=`<thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Dibuat</th><th></th></tr></thead><tbody>${list.map(u=>{const self=u.id===session.user.id;return `<tr><td><b>${esc(u.full_name||"-")}</b>${self?'<div class="muted">Akun Anda</div>':""}</td><td>${esc(u.email||"-")}</td><td>${self||!isApprover?`<span class="pill">${u.role==="approver"?"Approver":"Admin"}</span>`:`<select data-role-select="${u.id}" style="min-width:130px"><option value="admin" ${u.role==="admin"?"selected":""}>Admin</option><option value="approver" ${u.role==="approver"?"selected":""}>Approver</option></select>`}</td><td>${u.created_at?new Date(u.created_at).toLocaleDateString("id-ID"):"-"}</td><td>${!self&&isApprover?`<button class="btn small primary" data-role-save="${u.id}">Simpan Role</button>`:""}</td></tr>`}).join("")||'<tr><td colspan="5" class="empty">Belum ada akun</td></tr>'}</tbody>`;
- document.querySelectorAll("[data-role-save]").forEach(b=>b.onclick=async()=>{const id=b.dataset.roleSave,new_role=document.querySelector(`[data-role-select="${id}"]`).value,target=profiles.find(x=>x.id===id);if(!confirm(`Ubah role ${target?.full_name||"akun"} menjadi ${new_role==="approver"?"Approver":"Admin"}?`))return;const {error}=await sb.from("profiles").update({role:new_role}).eq("id",id);if(error)return alert(error.message);await loadProfile();await loadData();renderAll();alert("Role berhasil diperbarui.")});
+ if(!$("usersTable")) return;
+ const isMaster=!!profile?.is_master;
+ $("usersTable").innerHTML=`<thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Status</th><th>Akses</th></tr></thead><tbody>${
+  profiles.map(u=>{
+    const master=u.is_master;
+    const active=u.active!==false;
+    let actions="";
+    if(master){
+      actions='<span class="pill" style="background:#fef3c7;color:#92400e">Master Account</span>';
+    }else if(isMaster){
+      actions=`
+        <select data-user-role="${u.id}" style="min-width:110px">
+          <option value="admin" ${u.role==="admin"?"selected":""}>Admin</option>
+          <option value="approver" ${u.role==="approver"?"selected":""}>Approver</option>
+        </select>
+        <button class="btn small ${active?"danger":""}" data-user-active="${u.id}" data-next-active="${active?"false":"true"}">${active?"Nonaktifkan":"Aktifkan"}</button>
+        <button class="btn small danger" data-user-delete="${u.id}">Hapus Permanen</button>`;
+    }else{
+      actions='<span class="muted">Hanya Master yang dapat mengubah user</span>';
+    }
+    return `<tr>
+      <td><b>${esc(u.full_name||"-")}</b>${master?' <span class="pill">MASTER</span>':""}</td>
+      <td>${esc(u.email||"-")}</td>
+      <td><span class="pill">${u.role==="approver"?"Approver":"Admin"}</span></td>
+      <td>${active?'<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>':'<span class="pill" style="background:#fff0f2;color:#be123c">Nonaktif</span>'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join("") || '<tr><td colspan="5" class="empty">Belum ada user</td></tr>'
+ }</tbody>`;
+
+ document.querySelectorAll("[data-user-role]").forEach(el=>{
+   el.onchange=async()=>{
+     if(!profile?.is_master) return;
+     const {error}=await sb.rpc("master_set_user_role",{p_target:el.dataset.userRole,p_role:el.value});
+     if(error){alert(error.message);await loadData();renderAll();return}
+     await loadData();renderAll();
+   };
+ });
+ document.querySelectorAll("[data-user-active]").forEach(btn=>{
+   btn.onclick=async()=>{
+     if(!profile?.is_master) return;
+     const makeActive=btn.dataset.nextActive==="true";
+     if(!confirm(makeActive?"Aktifkan kembali user ini?":"Nonaktifkan user ini? User akan dikeluarkan dari sesi aktif.")) return;
+     const {error}=await sb.rpc("master_set_user_active",{p_target:btn.dataset.userActive,p_active:makeActive});
+     if(error){alert(error.message);return}
+     await loadData();renderAll();
+   };
+ });
+ document.querySelectorAll("[data-user-delete]").forEach(btn=>{
+   btn.onclick=async()=>{
+     if(!profile?.is_master) return;
+     if(!confirm("Hapus permanen user ini? Hanya user tanpa histori transaksi yang dapat dihapus.")) return;
+     const {error}=await sb.rpc("master_delete_unused_user",{p_target:btn.dataset.userDelete});
+     if(error){alert(error.message);return}
+     await loadData();renderAll();
+   };
+ });
 }
-$("userSearch").oninput=renderUsers;
-
-
 function applyRoleNavigation(){
  const isApprover=profile?.role==="approver";
 

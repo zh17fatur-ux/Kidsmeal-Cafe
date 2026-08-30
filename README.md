@@ -124,4 +124,12 @@ Frontend menggunakan @supabase/supabase-js 2.112.4 dari CDN.
 - Ketik nama/kelas lalu langsung tap siswa dari daftar hasil.
 - Tidak perlu dropdown kedua.
 - Setelah siswa dipilih, tagihan langsung tampil.
-- 
+
+## Perubahan v15 — Master Account
+- Master Account adalah satu-satunya akun yang dapat mengubah role user.
+- Master dapat Nonaktifkan / Aktifkan kembali user.
+- Nonaktifkan user memblokir akses dan menghapus sesi aktif.
+- Hapus Permanen hanya untuk user tanpa histori transaksi.
+- User dengan histori tidak bisa dihapus permanen; gunakan Nonaktifkan.
+- Master Account tidak dapat dinonaktifkan, dihapus, atau diturunkan dari Approver.
+- Approver biasa dapat melihat Manajemen User tetapi tidak dapat mengubah user.
