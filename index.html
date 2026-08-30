@@ -375,9 +375,9 @@ async function bootstrap(){
 sb.auth.onAuthStateChange(async(_event,s)=>{session=s;if(!s){profile=null;showAuth()}else{await loadProfile();showApp();await loadData();renderAll()}})
 
 async function loadProfile(){
- const {data,error}=await sb.from("profiles").select("id,full_name,role,email,created_at").eq("id",session.user.id).single();
+ const {data,error}=await sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active").eq("id",session.user.id).single();
  if(error){console.error(error);return}
- profile=data;$("currentUserName").textContent=profile.full_name;$("currentRole").textContent=profile.role==="approver"?"Approver":"Admin";
+ profile=data;$("currentUserName").textContent=profile.full_name;$("currentRole").textContent=profile.is_master?"Master Account":(profile.role==="approver"?"Approver":"Admin");
 }
 async function loadData(){
  const [a,b,c,d,e]=await Promise.all([
@@ -385,7 +385,7 @@ async function loadData(){
   sb.from("menus").select("*").order("category").order("name"),
   sb.from("orders").select("*,students(name,class_name),order_items(*)").order("order_date",{ascending:false}).limit(500),
   sb.from("payments").select("*,students(name,class_name)").order("payment_date",{ascending:false}).limit(500),
-  sb.from("profiles").select("id,full_name,role,email,created_at")
+  sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active")
  ]);
  [a,b,c,d,e].forEach(x=>{if(x.error)console.error(x.error)});
  students=a.data||[];menus=b.data||[];orders=c.data||[];payments=d.data||[];profiles=e.data||[];
