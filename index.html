@@ -274,6 +274,110 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   }
 }
 
+
+/* v22 breakfast order */
+.breakfast-option{
+  margin-top:14px;
+  border:2px solid #f59e0b;
+  background:#fffbeb;
+  border-radius:13px;
+  padding:12px 14px;
+}
+.breakfast-option label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  font-weight:900;
+  color:#92400e;
+}
+.breakfast-option input{
+  width:20px;
+  height:20px;
+  flex:0 0 auto;
+}
+.breakfast-badge{
+  display:inline-block;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#fef3c7;
+  color:#92400e;
+  font-size:11px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.breakfast-section{
+  border:2px solid #f59e0b;
+  background:#fffcf2;
+}
+.breakfast-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+  color:#92400e;
+}
+.breakfast-count{
+  margin-left:auto;
+  min-width:30px;
+  height:30px;
+  padding:0 8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  background:#f59e0b;
+  color:#fff;
+  font-weight:900;
+}
+#breakfastOrdersMobile{display:none}
+@media(max-width:650px){
+  #breakfastOrdersTable{display:none}
+  #breakfastOrdersMobile{display:block}
+  .breakfast-option{padding:11px 12px}
+}
+
+
+/* v25 status colors */
+.status-soft-preparing{
+  background:#fffbeb !important;
+  color:#92400e !important;
+  border-color:#fde68a !important;
+  font-weight:800;
+}
+.status-soft-completed{
+  background:#ecfdf5 !important;
+  color:#047857 !important;
+  border-color:#a7f3d0 !important;
+  font-weight:800;
+}
+.mobile-progress-btn.active[data-next-status="preparing"]{
+  background:#fffbeb !important;
+  color:#92400e !important;
+  border-color:#fbbf24 !important;
+}
+.mobile-progress-btn.active[data-next-status="completed"]{
+  background:#ecfdf5 !important;
+  color:#047857 !important;
+  border-color:#34d399 !important;
+}
+
+/* v25 quick payment from bills */
+.bill-pay-btn{white-space:nowrap}
+#billPaymentModal .modal{max-width:460px}
+.bill-payment-summary{
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  background:#fafafa;
+  margin:12px 0;
+}
+.weekly-total-row td{
+  font-weight:900;
+  background:#f8fafc;
+  border-top:2px solid var(--line);
+}
+
 </style>
 </head>
 <body>
@@ -333,7 +437,14 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
           <div id="selectedStudent" class="notice" style="margin-top:12px">Belum ada siswa dipilih.</div>
           <div id="cart" style="margin-top:10px"></div>
           <div class="flex" style="padding-top:14px;font-size:20px"><b>Total</b><b id="cartTotal" style="margin-left:auto">Rp0</b></div>
-          <button id="saveOrder" class="btn primary" style="width:100%;margin-top:12px">Simpan Pesanan</button>
+          <div class="breakfast-option">
+  <label>
+    <input id="isBreakfastOrder" type="checkbox">
+    <span>🌅 Apakah pesanan untuk sarapan?</span>
+  </label>
+  <div class="muted" style="margin-top:6px;margin-left:30px">Centang jika pesanan akan dimakan anak saat sarapan.</div>
+</div>
+<button id="saveOrder" class="btn primary" style="width:100%;margin-top:12px">Simpan Pesanan</button>
         </div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -344,9 +455,19 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
 
 
     <section id="todayPage" class="page hidden">
-      <div class="notice">Admin mengubah status langsung dari dropdown. <b>Sementara Dibuat</b> belum masuk tagihan atau Rekap Mingguan. Setelah dipilih <b>Selesai</b>, pesanan otomatis masuk Rekap Mingguan dan menjadi tagihan siswa.</div>
+      <div class="notice">Admin dan Approver dapat mengubah status pesanan langsung dari rekap. <b>Sementara Dibuat</b> belum masuk tagihan atau Rekap Mingguan. Setelah dipilih <b>Selesai</b>, pesanan otomatis masuk Rekap Mingguan dan menjadi tagihan siswa.</div>
       <div class="grid four" id="todayStats" style="margin-top:14px"></div>
+      <div class="card breakfast-section" style="margin-top:14px">
+        <div class="flex" style="margin-bottom:10px">
+          <h3 class="breakfast-title">🌅 Pesanan Sarapan</h3>
+          <span id="breakfastCount" class="breakfast-count">0</span>
+        </div>
+        <div class="muted" style="margin-bottom:10px">Prioritas pesanan yang akan dimakan saat sarapan.</div>
+        <div class="tablewrap"><table id="breakfastOrdersTable"></table></div>
+        <div id="breakfastOrdersMobile"></div>
+      </div>
       <div class="card" style="margin-top:14px">
+        <div class="flex" style="margin-bottom:8px"><h3 style="margin:0">Pesanan Lainnya</h3></div>
         <div class="flex" style="margin-bottom:12px">
           <input id="todaySearch" placeholder="Cari siswa / menu" style="max-width:320px">
           <select id="todayStatusFilter" style="max-width:200px">
@@ -444,7 +565,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
         <div class="flex" style="margin-bottom:12px">
           <div>
             <h3 style="margin:0">Manajemen User</h3>
-            <div class="muted" style="font-size:13px">Hanya Approver yang dapat mengubah role akun lain.</div>
+            <div class="muted" style="font-size:13px">Menu khusus Master Account untuk mengelola user.</div>
           </div>
           <input id="userSearch" placeholder="Cari nama / email" style="max-width:300px;margin-left:auto">
         </div>
@@ -453,6 +574,16 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
     </section>
   </main>
 </section>
+
+<div id="billPaymentModal" class="modalbg hidden"><div class="modal">
+  <div class="flex"><h3 style="margin:0">Catat Pembayaran Tagihan</h3><button id="closeBillPayment" class="btn small" style="margin-left:auto">✕</button></div>
+  <div id="billPaymentSummary" class="bill-payment-summary"></div>
+  <div class="field"><label>Tanggal Pembayaran</label><input id="billPaymentDate" type="date"></div>
+  <div class="field"><label>Nominal</label><input id="billPaymentAmount" type="number" min="1"></div>
+  <div class="field"><label>Metode Pembayaran</label><select id="billPaymentMethod"><option>Tunai</option><option>Transfer</option></select></div>
+  <div class="field"><label>Keterangan</label><textarea id="billPaymentNote" rows="2" placeholder="Opsional"></textarea></div>
+  <button id="saveBillPayment" class="btn primary" style="width:100%">Simpan Pembayaran</button>
+</div></div>
 
 <div id="cancelModal" class="modalbg hidden"><div class="modal">
   <div class="flex"><h3 style="margin:0">Ajukan Pembatalan</h3><button id="closeCancel" class="btn small" style="margin-left:auto">✕</button></div>
@@ -570,14 +701,26 @@ function renderMenusForOrder(){
      <div class="menu-click-area" data-menu-card="${m.id}">
        <b>${esc(m.name)}</b>
        <div class="muted">${rp(m.price)} • ${esc(m.category)}</div>
-       ${qty>0?`<span class="menu-selected-badge">Dipilih × ${qty}</span>`:""}
+       ${qty>0?`<span class="menu-selected-badge">Dipilih</span>`:""}
      </div>
-     <button class="circle" data-menu="${m.id}" aria-label="Tambah ${esc(m.name)}">${qty>0?qty:"+"}</button>
+     <button class="circle" data-menu="${m.id}" aria-label="Pilih ${esc(m.name)}">${qty>0?"✓":"+"}</button>
    </div>`;
  }).join("");
- const addMenu=id=>{cart[id]=(cart[id]||0)+1;renderCart();renderMenusForOrder()};
- document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{e.stopPropagation();addMenu(b.dataset.menu)});
- document.querySelectorAll("[data-menu-card]").forEach(el=>el.onclick=()=>addMenu(el.dataset.menuCard));
+ const selectMenuOnce=id=>{
+   if(!cart[id]) cart[id]=1;
+   renderCart();
+   renderMenusForOrder();
+ };
+ document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=e=>{
+   e.preventDefault();
+   e.stopPropagation();
+   selectMenuOnce(b.dataset.menu);
+ });
+ document.querySelectorAll("[data-menu-card]").forEach(el=>el.onclick=e=>{
+   e.preventDefault();
+   e.stopPropagation();
+   selectMenuOnce(el.dataset.menuCard);
+ });
 }
 $("menuFilter").onchange=renderMenusForOrder;
 function renderCart(){
@@ -591,11 +734,11 @@ $("saveOrder").onclick=async()=>{
  if(!selectedStudentId)return alert("Pilih siswa.");
  const items=Object.entries(cart).filter(([_,q])=>q>0);if(!items.length)return alert("Pilih menu.");
  $("saveOrder").disabled=true;
- const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",created_by:session.user.id}).select().single();
+ const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",is_breakfast:$("isBreakfastOrder").checked,created_by:session.user.id}).select().single();
  if(error){$("saveOrder").disabled=false;return alert(error.message)}
  const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
  const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
- if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
+ if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("isBreakfastOrder").checked=false;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
 }
 
 
@@ -606,24 +749,27 @@ function effectiveTodayStatus(o){
 }
 function todayStatusBadge(o){
  const s=effectiveTodayStatus(o);
- if(s==="completed") return '<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>';
+ if(s==="completed") return '<span class="pill status-soft-completed">Selesai</span>';
  if(s==="cancelled") return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
  if(s==="cancel_pending") return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
- return '<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>';
+ return '<span class="pill status-soft-preparing">Sementara Dibuat</span>';
 }
 
 function renderTodayOrders(){
  const q=$("todaySearch").value.toLowerCase().trim();
  const f=$("todayStatusFilter").value;
- let list=orders.filter(o=>o.order_date===today);
- list=list.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q));
- list=list.filter(o=>f==="all"||effectiveTodayStatus(o)===f);
- list.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+ const allToday=orders.filter(o=>o.order_date===today);
+ let filtered=allToday.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q));
+ filtered=filtered.filter(o=>f==="all"||effectiveTodayStatus(o)===f);
+ filtered.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 
- const prep=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="preparing").length;
- const done=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="completed").length;
- const pend=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="cancel_pending").length;
- const canc=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="cancelled").length;
+ const breakfast=filtered.filter(o=>o.is_breakfast);
+ const list=filtered.filter(o=>!o.is_breakfast);
+
+ const prep=allToday.filter(o=>effectiveTodayStatus(o)==="preparing").length;
+ const done=allToday.filter(o=>effectiveTodayStatus(o)==="completed").length;
+ const pend=allToday.filter(o=>effectiveTodayStatus(o)==="cancel_pending").length;
+ const canc=allToday.filter(o=>effectiveTodayStatus(o)==="cancelled").length;
 
  $("todayStats").innerHTML=`
  <div class="card stat"><div class="label">Sementara Dibuat</div><div class="value">${prep}</div></div>
@@ -631,119 +777,92 @@ function renderTodayOrders(){
  <div class="card stat"><div class="label">Menunggu Approval</div><div class="value">${pend}</div></div>
  <div class="card stat"><div class="label">Dibatalkan</div><div class="value">${canc}</div></div>`;
 
- $("todayOrdersTable").innerHTML=`<thead><tr>
-   <th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th><th>Pembatalan</th>
- </tr></thead><tbody>${
-   list.map(o=>{
-     const eff=effectiveTodayStatus(o);
+ $("breakfastCount").textContent=breakfast.length;
 
-     let statusControl="";
-     if(o.status==="cancelled"){
-       statusControl='<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
-     }else if(o.status==="cancel_pending"){
-       statusControl='<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
-     }else if(profile?.role==="admin"){
-       statusControl=`<select data-progress-select="${o.id}" style="min-width:170px">
-         <option value="preparing" ${eff==="preparing"?"selected":""}>Sementara Dibuat</option>
-         <option value="completed" ${eff==="completed"?"selected":""}>Selesai</option>
-       </select>`;
-     }else{
-       statusControl=todayStatusBadge(o);
-     }
-
-     const cancelAction=(profile?.role==="admin"&&o.status==="active")
-       ? `<button class="btn small danger" data-today-cancel="${o.id}">Ajukan Batal</button>`
-       : (o.status==="cancel_pending"?'<span class="muted">Menunggu approval</span>':"");
-
-     return `<tr>
-       <td><b>${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</b></td>
-       <td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td>
-       <td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td>
-       <td>${statusControl}</td>
-       <td class="money">${rp(orderTotal(o))}</td>
-       <td>${cancelAction}</td>
-     </tr>`;
-   }).join("") || '<tr><td colspan="6" class="empty">Belum ada pesanan hari ini</td></tr>'
- }</tbody>`;
-
-
- $("todayOrdersMobile").innerHTML=list.map(o=>{
+ const statusControlFor=(o,mobile=false)=>{
    const eff=effectiveTodayStatus(o);
-   let statusControl="";
-   if(o.status==="cancelled"){
-     statusControl='<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
-   }else if(o.status==="cancel_pending"){
-     statusControl='<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
-   }else if(profile?.role==="admin"){
-     statusControl=`<div class="mobile-progress-buttons">
-       <button type="button" class="mobile-progress-btn ${eff==="preparing"?"active":""}" data-mobile-status="${o.id}" data-next-status="preparing">Sementara Dibuat</button>
-       <button type="button" class="mobile-progress-btn ${eff==="completed"?"active":""}" data-mobile-status="${o.id}" data-next-status="completed">Selesai</button>
-     </div>`;
-   }else{
-     statusControl=todayStatusBadge(o);
+   if(o.status==="cancelled") return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
+   if(o.status==="cancel_pending") return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
+   if(["admin","approver"].includes(profile?.role)){
+     if(mobile){
+       return `<div class="mobile-progress-buttons">
+         <button type="button" class="mobile-progress-btn ${eff==="preparing"?"active":""}" data-mobile-status="${o.id}" data-next-status="preparing">Sementara Dibuat</button>
+         <button type="button" class="mobile-progress-btn ${eff==="completed"?"active":""}" data-mobile-status="${o.id}" data-next-status="completed">Selesai</button>
+       </div>`;
+     }
+     return `<select data-progress-select="${o.id}" class="${eff==="completed"?"status-soft-completed":"status-soft-preparing"}" style="min-width:170px">
+       <option value="preparing" ${eff==="preparing"?"selected":""}>Sementara Dibuat</option>
+       <option value="completed" ${eff==="completed"?"selected":""}>Selesai</option>
+     </select>`;
    }
+   return todayStatusBadge(o);
+ };
 
-   const cancelAction=(profile?.role==="admin"&&o.status==="active")
-     ? `<button class="btn small danger" data-today-cancel-mobile="${o.id}">Ajukan Batal</button>`
-     : "";
+ const cancelActionFor=(o,mobile=false)=>{
+   if(profile?.role==="admin"&&o.status==="active"){
+     return `<button class="btn small danger" ${mobile?`data-today-cancel-mobile="${o.id}"`:`data-today-cancel="${o.id}"`}>Ajukan Batal</button>`;
+   }
+   return o.status==="cancel_pending"?'<span class="muted">Menunggu approval</span>':"";
+ };
 
-   return `<div class="today-card">
-     <div class="today-card-head">
-       <div><div class="student-name">${esc(o.students?.name||"-")}</div><div class="muted">${esc(o.students?.class_name||"")}</div></div>
-       <div class="time">${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div>
-     </div>
-     <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</div>
-     <div class="row"><span class="muted">Total</span><b>${rp(orderTotal(o))}</b></div>
-     <div class="row"><span class="muted">Status</span>${statusControl}</div>
-     ${cancelAction?`<div class="row">${cancelAction}</div>`:""}
-   </div>`;
- }).join("") || '<div class="empty">Belum ada pesanan hari ini</div>';
+ const desktopRows=(arr,emptyText)=>arr.map(o=>`<tr>
+   <td><b>${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</b></td>
+   <td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td>
+   <td>${o.is_breakfast?'<span class="breakfast-badge">🌅 SARAPAN</span><br>':""}${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td>
+   <td>${statusControlFor(o,false)}</td>
+   <td class="money">${rp(orderTotal(o))}</td>
+   <td>${cancelActionFor(o,false)}</td>
+ </tr>`).join("") || `<tr><td colspan="6" class="empty">${emptyText}</td></tr>`;
+
+ const mobileCards=(arr,emptyText)=>arr.map(o=>`<div class="today-card ${o.is_breakfast?"breakfast-section":""}">
+   <div class="today-card-head">
+     <div><div class="student-name">${esc(o.students?.name||"-")}</div><div class="muted">${esc(o.students?.class_name||"")}</div></div>
+     <div style="text-align:right">${o.is_breakfast?'<div class="breakfast-badge">🌅 SARAPAN</div>':""}<div class="time" style="margin-top:4px">${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div></div>
+   </div>
+   <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</div>
+   <div class="row"><span class="muted">Total</span><b>${rp(orderTotal(o))}</b></div>
+   <div class="row"><span class="muted">Status</span>${statusControlFor(o,true)}</div>
+   ${cancelActionFor(o,true)?`<div class="row">${cancelActionFor(o,true)}</div>`:""}
+ </div>`).join("") || `<div class="empty">${emptyText}</div>`;
+
+ $("breakfastOrdersTable").innerHTML=`<thead><tr><th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th><th>Pembatalan</th></tr></thead><tbody>${desktopRows(breakfast,"Belum ada pesanan sarapan hari ini")}</tbody>`;
+ $("breakfastOrdersMobile").innerHTML=mobileCards(breakfast,"Belum ada pesanan sarapan hari ini");
+
+ $("todayOrdersTable").innerHTML=`<thead><tr><th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th><th>Pembatalan</th></tr></thead><tbody>${desktopRows(list,"Belum ada pesanan lainnya hari ini")}</tbody>`;
+ $("todayOrdersMobile").innerHTML=mobileCards(list,"Belum ada pesanan lainnya hari ini");
 
  document.querySelectorAll("[data-mobile-status]").forEach(btn=>{
    btn.onclick=async()=>{
-     if(!["admin","approver"].includes(profile?.role)){ alert("Anda tidak memiliki izin mengubah status pesanan."); return; }
-     const id=btn.dataset.mobileStatus;
-     const newStatus=btn.dataset.nextStatus;
-     const order=orders.find(o=>o.id===id);
-     if(!order || order.progress_status===newStatus) return;
+     if(!["admin","approver"].includes(profile?.role)){alert("Anda tidak memiliki izin mengubah status pesanan.");return}
+     const id=btn.dataset.mobileStatus,newStatus=btn.dataset.nextStatus,order=orders.find(o=>o.id===id);
+     if(!order||order.progress_status===newStatus)return;
      const warning=newStatus==="completed"
        ?"Tandai pesanan sebagai Selesai? Pesanan akan masuk Rekap Mingguan dan tagihan siswa."
        :"Kembalikan menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
-     if(!confirm(warning)) return;
+     if(!confirm(warning))return;
      document.querySelectorAll(`[data-mobile-status="${id}"]`).forEach(x=>x.disabled=true);
-     const {data,error}=await sb.from("orders")
-       .update({progress_status:newStatus})
-       .eq("id",id)
-       .in("status",["active","cancel_rejected"])
-       .select("id,progress_status,status")
-       .maybeSingle();
-     if(error){ alert("Gagal mengubah status: "+error.message); await loadData(); renderAll(); return; }
-     if(!data){ alert("Status tidak berubah. Pesanan mungkin sedang menunggu approval pembatalan atau sudah dibatalkan."); await loadData(); renderAll(); return; }
-     await loadData();
-     renderAll();
+     const {data,error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",id).in("status",["active","cancel_rejected"]).select("id,progress_status,status").maybeSingle();
+     if(error){alert("Gagal mengubah status: "+error.message);await loadData();renderAll();return}
+     if(!data){alert("Status tidak berubah. Pesanan mungkin sedang menunggu approval pembatalan atau sudah dibatalkan.");await loadData();renderAll();return}
+     await loadData();renderAll();
    };
  });
- document.querySelectorAll("[data-today-cancel-mobile]").forEach(b=>b.onclick=()=>openCancel(b.dataset.todayCancelMobile));
 
  document.querySelectorAll("[data-progress-select]").forEach(sel=>{
    sel.onchange=async()=>{
-     if(profile?.role!=="admin"){ await loadData(); renderAll(); return; }
      const newStatus=sel.value;
      const warning=newStatus==="completed"
-       ?"Ubah status menjadi Selesai? Pesanan akan masuk Rekap Mingguan dan menjadi tagihan siswa."
-       :"Ubah status menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
-     if(!confirm(warning)){ await loadData(); renderAll(); return; }
-
-     const {error}=await sb.from("orders")
-       .update({progress_status:newStatus})
-       .eq("id",sel.dataset.progressSelect)
-       .in("status",["active","cancel_rejected"]);
-
-     if(error){ alert(error.message); await loadData(); renderAll(); return; }
-     await loadData(); renderAll();
+       ?"Tandai pesanan sebagai Selesai? Pesanan akan masuk Rekap Mingguan dan tagihan siswa."
+       :"Kembalikan menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
+     if(!confirm(warning)){renderTodayOrders();return}
+     const {error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",sel.dataset.progressSelect).in("status",["active","cancel_rejected"]);
+     if(error){alert(error.message);renderTodayOrders();return}
+     await loadData();renderAll();
    };
  });
- document.querySelectorAll("[data-today-cancel]").forEach(b=>b.onclick=()=>openCancel(b.dataset.todayCancel));
+
+ document.querySelectorAll("[data-today-cancel]").forEach(btn=>btn.onclick=()=>openCancelModal(btn.dataset.todayCancel));
+ document.querySelectorAll("[data-today-cancel-mobile]").forEach(btn=>btn.onclick=()=>openCancelModal(btn.dataset.todayCancelMobile));
 }
 $("todaySearch").oninput=renderTodayOrders;
 $("todayStatusFilter").onchange=renderTodayOrders;
@@ -762,18 +881,77 @@ function startWeek(ds){const d=new Date(ds+"T00:00:00"),day=d.getDay(),diff=day=
 function renderWeekly(){
  const base=startWeek($("weekDate").value),days=[0,1,2,3,4,5,6].map(n=>{const d=new Date(base);d.setDate(base.getDate()+n);return{date:iso(d),label:d.toLocaleDateString("id-ID",{weekday:"short",day:"2-digit",month:"2-digit"})}});
  const cs=["Semua",...new Set(students.map(s=>s.class_name))].sort(),old=$("weekClass").value||"Semua";$("weekClass").innerHTML=cs.map(c=>`<option>${esc(c)}</option>`).join("");if(cs.includes(old))$("weekClass").value=old;
- const cls=$("weekClass").value||"Semua";const rows=students.filter(s=>cls==="Semua"||s.class_name===cls).map(s=>({s,cells:days.map(d=>orders.filter(o=>o.student_id===s.id&&o.order_date===d.date&&billableOrder(o)))})).filter(x=>x.cells.some(c=>c.length));
- $("weeklyTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas</th>${days.map(d=>`<th>${d.label}</th>`).join("")}<th>Total</th></tr></thead><tbody>${rows.map(r=>{let total=0;return `<tr><td><b>${esc(r.s.name)}</b></td><td>${esc(r.s.class_name)}</td>${r.cells.map(os=>{let t=os.reduce((a,o)=>a+orderTotal(o),0);total+=t;return `<td>${os.flatMap(o=>o.order_items).map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${t?`<div class="money"><b>${rp(t)}</b></div>`:"-"}</td>`}).join("")}<td class="money"><b>${rp(total)}</b></td></tr>`}).join("")||'<tr><td colspan="10" class="empty">Tidak ada pesanan minggu ini</td></tr>'}</tbody>`
+ const cls=$("weekClass").value||"Semua";
+ const rows=students
+   .filter(s=>cls==="Semua"||s.class_name===cls)
+   .map(s=>({s,cells:days.map(d=>orders.filter(o=>o.student_id===s.id&&o.order_date===d.date&&billableOrder(o)))}))
+   .filter(x=>x.cells.some(c=>c.length));
+
+ const dailyTotals=days.map((_,dayIndex)=>rows.reduce((sum,r)=>sum+r.cells[dayIndex].reduce((a,o)=>a+orderTotal(o),0),0));
+ const grandTotal=dailyTotals.reduce((a,n)=>a+n,0);
+
+ $("weeklyTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas</th>${days.map(d=>`<th>${d.label}</th>`).join("")}<th>Total</th></tr></thead>
+ <tbody>${rows.map(r=>{let total=0;return `<tr><td><b>${esc(r.s.name)}</b></td><td>${esc(r.s.class_name)}</td>${r.cells.map(os=>{let t=os.reduce((a,o)=>a+orderTotal(o),0);total+=t;return `<td>${os.flatMap(o=>o.order_items).map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${t?`<div class="money"><b>${rp(t)}</b></div>`:"-"}</td>`}).join("")}<td class="money"><b>${rp(total)}</b></td></tr>`}).join("")||'<tr><td colspan="10" class="empty">Tidak ada pesanan minggu ini</td></tr>'}</tbody>
+ <tfoot><tr class="weekly-total-row"><td colspan="2">TOTAL PER HARI</td>${dailyTotals.map(t=>`<td class="money">${rp(t)}</td>`).join("")}<td class="money">${rp(grandTotal)}</td></tr></tfoot>`;
 }
 $("weekDate").onchange=renderWeekly;$("weekClass").onchange=renderWeekly;
 
+let billPaymentTargetId=null;
 function renderBills(){
  const b=balances(),un=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
  $("billStats").innerHTML=`<div class="card stat"><div class="label">Belum Lunas</div><div class="value">${un.length}</div></div><div class="card stat"><div class="label">Total Tagihan</div><div class="value">${rp(un.reduce((a,x)=>a+x.balance,0))}</div></div><div class="card stat"><div class="label">Deposit</div><div class="value">${dep.length}</div></div><div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>`;
- const q=$("billSearch").value.toLowerCase().trim(),f=$("billFilter").value;let rows=b.filter(x=>x.balance!==0).filter(x=>!q||(x.name+" "+x.class_name).toLowerCase().includes(q)).filter(x=>f==="all"||(f==="unpaid"?x.balance>0:x.balance<0));
- $("billsTable").innerHTML=`<thead><tr><th>Siswa</th><th>Kelas</th><th>Status</th><th class="money">Pesanan</th><th class="money">Dibayar</th><th class="money">Saldo</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.class_name)}</td><td>${x.balance<0?'<span class="pill" style="background:#ecfdf5;color:#047857">Deposit</span>':'<span class="pill" style="background:#fff0f2;color:#be123c">Belum Lunas</span>'}</td><td class="money">${rp(x.total)}</td><td class="money">${rp(x.paid)}</td><td class="money ${x.balance<0?"positive":"negative"}"><b>${x.balance<0?"+ "+rp(Math.abs(x.balance)):rp(x.balance)}</b></td></tr>`).join("")||'<tr><td colspan="6" class="empty">Tidak ada saldo aktif</td></tr>'}</tbody>`
+ const q=$("billSearch").value.toLowerCase().trim(),f=$("billFilter").value;
+ let rows=b.filter(x=>x.balance!==0).filter(x=>!q||(x.name+" "+x.class_name).toLowerCase().includes(q)).filter(x=>f==="all"||(f==="unpaid"?x.balance>0:x.balance<0));
+ const canPay=profile?.role==="approver";
+ $("billsTable").innerHTML=`<thead><tr><th>Siswa</th><th>Kelas</th><th>Status</th><th class="money">Pesanan</th><th class="money">Dibayar</th><th class="money">Saldo</th>${canPay?"<th>Pembayaran</th>":""}</tr></thead><tbody>${rows.map(x=>`<tr>
+   <td><b>${esc(x.name)}</b></td>
+   <td>${esc(x.class_name)}</td>
+   <td>${x.balance<0?'<span class="pill" style="background:#ecfdf5;color:#047857">Deposit</span>':'<span class="pill" style="background:#fff0f2;color:#be123c">Belum Lunas</span>'}</td>
+   <td class="money">${rp(x.total)}</td>
+   <td class="money">${rp(x.paid)}</td>
+   <td class="money ${x.balance<0?"positive":"negative"}"><b>${x.balance<0?"+ "+rp(Math.abs(x.balance)):rp(x.balance)}</b></td>
+   ${canPay?`<td>${x.balance>0?`<button class="btn small primary bill-pay-btn" data-bill-pay="${x.id}">Isi Pembayaran</button>`:'<span class="muted">Deposit</span>'}</td>`:""}
+ </tr>`).join("")||`<tr><td colspan="${canPay?7:6}" class="empty">Tidak ada saldo aktif</td></tr>`}</tbody>`;
+
+ document.querySelectorAll("[data-bill-pay]").forEach(btn=>btn.onclick=()=>{
+   if(profile?.role!=="approver")return;
+   billPaymentTargetId=btn.dataset.billPay;
+   const s=b.find(x=>x.id===billPaymentTargetId);
+   if(!s)return;
+   $("billPaymentSummary").innerHTML=`<b>${esc(s.name)}</b> • ${esc(s.class_name)}<br>Total pesanan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="negative">Sisa tagihan: ${rp(s.balance)}</b>`;
+   $("billPaymentDate").value=today;
+   $("billPaymentAmount").value=Math.max(0,s.balance);
+   $("billPaymentMethod").value="Tunai";
+   $("billPaymentNote").value="";
+   $("billPaymentModal").classList.remove("hidden");
+ });
 }
 $("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;
+
+$("closeBillPayment").onclick=()=>$("billPaymentModal").classList.add("hidden");
+$("saveBillPayment").onclick=async()=>{
+ if(profile?.role!=="approver")return alert("Hanya Approver atau Master yang dapat mencatat pembayaran dari menu Tagihan.");
+ if(!billPaymentTargetId)return alert("Pilih siswa.");
+ const amount=Number($("billPaymentAmount").value);
+ if(!(amount>0))return alert("Isi nominal pembayaran.");
+ $("saveBillPayment").disabled=true;
+ const {error}=await sb.from("payments").insert({
+   student_id:billPaymentTargetId,
+   payment_date:$("billPaymentDate").value,
+   amount,
+   method:$("billPaymentMethod").value,
+   note:$("billPaymentNote").value.trim(),
+   created_by:session.user.id
+ });
+ $("saveBillPayment").disabled=false;
+ if(error)return alert(error.message);
+ $("billPaymentModal").classList.add("hidden");
+ billPaymentTargetId=null;
+ await loadData();
+ renderAll();
+ alert("Pembayaran berhasil disimpan.");
+};
+
 
 function renderPaymentSearch(){
  const q=$("paymentSearch").value.toLowerCase().trim();
@@ -943,30 +1121,38 @@ function renderUsers(){
 }
 function applyRoleNavigation(){
  const isApprover=profile?.role==="approver";
+ const isMaster=!!profile?.is_master;
 
- // Admin sees: Dashboard, Input Pesanan, Rekap Pesanan Hari Ini, Pembayaran.
- ["navWeekly","navBills","navApprovals","navStudents","navMenus","usersNav"].forEach(id=>{
+ // Approver sees operational/master menus, except Manajemen User.
+ ["navWeekly","navBills","navApprovals","navStudents","navMenus"].forEach(id=>{
    const el=$(id);
    if(el) el.classList.toggle("hidden", !isApprover);
  });
+ // Manajemen User is Master-only.
+ if($("usersNav"))$("usersNav").classList.toggle("hidden",!isMaster);
 
  ["navDashboard","navOrders","todayNav","navPayments"].forEach(id=>{
    const el=$(id);
    if(el) el.classList.remove("hidden");
  });
 
- // If an Admin somehow lands on a restricted page, redirect to Dashboard.
- if(!isApprover){
-   const restricted=["weeklyPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
-   const current=document.querySelector(".page:not(.hidden)");
-   if(current && restricted.includes(current.id)){
-     document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
-     $("dashboardPage").classList.remove("hidden");
-     document.querySelectorAll("[data-page]").forEach(x=>x.classList.remove("active"));
-     $("navDashboard")?.classList.add("active");
-     $("pageTitle").textContent="Dashboard";
-     $("pageSub").textContent="Ringkasan data online";
-   }
+ const current=document.querySelector(".page:not(.hidden)");
+ const restrictedForAdmin=["weeklyPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
+ if(!isApprover && current && restrictedForAdmin.includes(current.id)){
+   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
+   $("dashboardPage").classList.remove("hidden");
+   document.querySelectorAll("[data-page]").forEach(x=>x.classList.remove("active"));
+   $("navDashboard")?.classList.add("active");
+   $("pageTitle").textContent="Dashboard";
+   $("pageSub").textContent="Ringkasan data online";
+ }
+ if(isApprover && !isMaster && current?.id==="usersPage"){
+   document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
+   $("dashboardPage").classList.remove("hidden");
+   document.querySelectorAll("[data-page]").forEach(x=>x.classList.remove("active"));
+   $("navDashboard")?.classList.add("active");
+   $("pageTitle").textContent="Dashboard";
+   $("pageSub").textContent="Ringkasan data online";
  }
 }
 
