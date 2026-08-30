@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kidsmeal Cafe Online</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f7f8fb;--card:#fff;--text:#161923;--muted:#6b7280;--line:#e6e8ed;--brand:#ff4770;--soft:#fff0f4;--green:#06875f;--red:#d61f4b;--amber:#b45309;--radius:16px;--shadow:0 8px 28px rgba(20,24,35,.06)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}.hidden{display:none!important}.muted{color:var(--muted)}.money{text-align:right;white-space:nowrap}
+.btn{border:1px solid var(--line);background:white;padding:10px 13px;border-radius:10px;cursor:pointer;font-weight:700}.btn:hover{filter:brightness(.98)}
+.btn.primary{background:var(--brand);color:white;border-color:var(--brand)}.btn.danger{color:var(--red)}.btn.small{padding:6px 9px;font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}.grid{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}.four{grid-template-columns:repeat(4,1fr)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.field label{font-size:13px;font-weight:800}input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:white;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:#ff9fb4;box-shadow:0 0 0 3px #fff0f4}.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f2f4f7;font-size:12px}.negative{color:var(--red);font-weight:800}.positive{color:var(--green);font-weight:800}
+.notice{padding:12px 14px;border:1px solid #f4d58d;background:#fff9e9;border-radius:12px;color:#795711;font-size:13px}
+#authView{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,#fff7fa,#f7f8fb 55%,#f7fff9)}
+.authbox{width:min(440px,100%)}.brand{font-size:28px;font-weight:950;color:var(--brand);margin-bottom:6px}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}.side{background:#fff;border-right:1px solid var(--line);padding:16px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+.side .brand{font-size:21px;padding:7px 8px 18px}.nav button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 11px;border-radius:10px;cursor:pointer;margin:2px 0;color:#384152}.nav button.active{background:var(--soft);color:var(--brand);font-weight:800}
+main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}.top h1{font-size:24px;margin:0}.userbox{text-align:right;font-size:13px}
+.stat .label{font-size:12px;color:var(--muted)}.stat .value{font-size:25px;font-weight:950;margin-top:5px}
+.results{max-height:270px;overflow:auto;border:1px solid var(--line);border-radius:12px}.rowpick{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}.rowpick:hover{background:#fff8fa}.rowpick:last-child{border:0}
+.menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.menu{border:1px solid var(--line);border-radius:12px;padding:11px;display:flex;justify-content:space-between;align-items:center}.circle{width:30px;height:30px;border-radius:50%;border:1px solid #ffb5c4;background:#fff;color:var(--brand);font-weight:900;cursor:pointer}
+.cartrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}.qty{display:flex;gap:6px;align-items:center}.qty button{width:27px;height:27px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#fff6f8}.tag{display:inline-block;padding:3px 6px;border-radius:6px;background:#f4f5f7;margin:2px}.empty{text-align:center;color:var(--muted);padding:28px}
+.modalbg{position:fixed;inset:0;background:rgba(10,15,25,.45);display:grid;place-items:center;padding:18px;z-index:99}.modal{width:min(560px,100%);background:white;border-radius:18px;padding:20px;box-shadow:0 30px 80px rgba(0,0,0,.2)}
+@media(max-width:1000px){.app{grid-template-columns:78px 1fr}.side .brand span,.nav button span{display:none}.nav button{text-align:center}.two,.four{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.app{display:block}.side{position:sticky;z-index:4;top:0;height:auto;display:flex;overflow:auto;padding:6px;border-right:0;border-bottom:1px solid var(--line)}.side .brand{display:none}.nav{display:flex}.nav button{width:auto}.two,.three,.four,.menu-grid{grid-template-columns:1fr}main{padding:13px}.top{align-items:flex-start}}
+
+/* Mobile UX refinements */
+@media(max-width:650px){
+  body{padding-bottom:78px}
+  .app{display:block}
+  .side{
+    position:fixed;
+    left:0;right:0;bottom:0;top:auto;
+    height:68px;
+    z-index:50;
+    display:block;
+    padding:6px 8px;
+    border-top:1px solid var(--line);
+    border-bottom:0;
+    background:#fff;
+    overflow-x:auto;
+    overflow-y:hidden;
+    white-space:nowrap;
+    box-shadow:0 -8px 24px rgba(20,24,35,.08)
+  }
+  .side .brand{display:none}
+  .nav{
+    display:flex;
+    gap:4px;
+    min-width:max-content;
+    align-items:center;
+    height:100%
+  }
+  .nav button{
+    width:auto;
+    min-width:78px;
+    padding:7px 9px;
+    margin:0;
+    text-align:center;
+    font-size:11px;
+    line-height:1.15;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px
+  }
+  .nav button span{display:block!important;max-width:95px;white-space:normal}
+  main{padding:12px 12px 90px}
+  .top{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:var(--bg);
+    padding:8px 0 10px;
+    margin-bottom:10px;
+    align-items:flex-start
+  }
+  .top h1{font-size:20px}
+  .top .muted{font-size:12px}
+  .userbox{font-size:11px}
+  .card{padding:14px;border-radius:14px}
+  .grid,.two,.three,.four,.menu-grid{grid-template-columns:1fr!important}
+  .stat .value{font-size:22px}
+  .field{margin-bottom:10px}
+  input,select,textarea,.btn{min-height:44px}
+  .btn.small{min-height:36px}
+  .results{max-height:230px}
+  .rowpick{padding:12px 11px}
+  .menu{padding:12px}
+  .circle{width:36px;height:36px}
+  .cartrow{grid-template-columns:1fr auto}
+  .cartrow>b:last-child{grid-column:1/-1;text-align:right}
+  .tablewrap{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    border-radius:10px
+  }
+  table{min-width:720px;font-size:12px}
+  th,td{padding:9px 8px}
+  #todayOrdersTable{min-width:760px}
+  #weeklyTable{min-width:1000px}
+  #billsTable,#paymentsTable,#studentsTable,#menusTable,#usersTable,#approvalsTable,#orderHistoryTable{min-width:760px}
+  .notice{font-size:12px}
+  .modalbg{align-items:end;padding:0}
+  .modal{
+    width:100%;
+    max-height:88vh;
+    overflow:auto;
+    border-radius:18px 18px 0 0;
+    padding:16px
+  }
+}
+
+/* Very small phones */
+@media(max-width:390px){
+  main{padding-left:9px;padding-right:9px}
+  .nav button{min-width:72px;font-size:10px}
+  .top h1{font-size:18px}
+  .card{padding:12px}
+  table{font-size:11px}
+}
+
+
+@media(max-width:650px){
+  #todayOrdersTable{display:none}
+  #todayOrdersMobile{display:block!important}
+  .today-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:13px;
+    margin-bottom:10px;
+    box-shadow:var(--shadow)
+  }
+  .today-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}
+  .today-card .student-name{font-weight:900;font-size:15px}
+  .today-card .time{font-weight:900;color:var(--brand)}
+  .today-card .items{margin:8px 0}
+  .today-card .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:9px}
+  .today-card select{min-width:155px}
+}
+
+</style>
+</head>
+<body>
+<section id="authView">
+  <div class="authbox card">
+    <div class="brand">🍱 Kidsmeal Cafe</div>
+    <p class="muted">Login untuk mengakses pesanan, tagihan, pembayaran, dan persetujuan pembatalan.</p>
+    <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="admin@sekolah.com"></div>
+    <div class="field"><label>Password</label><input id="authPassword" type="password" placeholder="Minimal 6 karakter"></div>
+    <div id="authNameField" class="field hidden"><label>Nama lengkap</label><input id="authName" placeholder="Nama admin"></div>
+    <div id="authMessage" class="notice hidden"></div>
+    <div class="flex">
+      <button id="loginBtn" class="btn primary grow">Login</button>
+      <button id="showSignupBtn" class="btn">Buat Akun</button>
+      <button id="signupBtn" class="btn primary grow hidden">Daftar</button>
+      <button id="backLoginBtn" class="btn hidden">Kembali</button>
+    </div>
+  </div>
+</section>
+
+<section id="appView" class="app hidden">
+  <aside class="side">
+    <div class="brand">🍱 <span>Kidsmeal Cafe</span></div>
+    <div class="nav">
+
+      <button data-page="dashboard" id="navDashboard" class="active">🏠 <span>Dashboard</span></button>
+      <button data-page="orders" id="navOrders">🧾 <span>Input Pesanan</span></button>
+      <button data-page="today" id="todayNav">📋 <span>Rekap Pesanan Hari Ini</span></button>
+<button data-page="weekly" id="navWeekly">📅 <span>Rekap Mingguan</span></button>
+      <button data-page="bills" id="navBills">💳 <span>Tagihan</span></button>
+      <button data-page="payments" id="navPayments">💵 <span>Pembayaran</span></button>
+      <button data-page="approvals" id="navApprovals">✅ <span>Persetujuan Batal</span></button>
+      <button data-page="students" id="navStudents">👥 <span>Data Siswa</span></button>
+      <button data-page="menus" id="navMenus">🍽️ <span>Data Menu</span></button>
+      <button data-page="users" id="usersNav">🔐 <span>Manajemen User</span></button>
+    </div>
+  </aside>
+  <main>
+    <div class="top">
+      <div><h1 id="pageTitle">Dashboard</h1><div id="pageSub" class="muted">Data online Kidsmeal Cafe</div></div>
+      <div class="userbox"><b id="currentUserName">-</b> <span id="currentRole" class="pill">-</span><br><button id="logoutBtn" class="btn small" style="margin-top:5px">Logout</button></div>
+    </div>
+
+    <section id="dashboardPage" class="page"></section>
+
+    <section id="ordersPage" class="page hidden">
+      <div class="grid two">
+        <div class="card">
+          <div class="field"><label>Cari siswa</label><input id="studentSearch" placeholder="Nama atau kelas"></div>
+          <div id="studentResults" class="results"></div>
+          <div style="height:14px"></div>
+          <div class="flex"><b>Menu</b><select id="menuFilter" style="width:auto;margin-left:auto"></select></div>
+          <div id="menuGrid" class="menu-grid" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+          <div class="flex"><h3 style="margin:0">Keranjang Pesanan</h3><input id="orderDate" type="date" style="width:auto;margin-left:auto"></div>
+          <div id="selectedStudent" class="notice" style="margin-top:12px">Belum ada siswa dipilih.</div>
+          <div id="cart" style="margin-top:10px"></div>
+          <div class="flex" style="padding-top:14px;font-size:20px"><b>Total</b><b id="cartTotal" style="margin-left:auto">Rp0</b></div>
+          <button id="saveOrder" class="btn primary" style="width:100%;margin-top:12px">Simpan Pesanan</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="flex"><h3 style="margin:0">Riwayat Pesanan</h3><input id="orderHistorySearch" placeholder="Cari siswa / menu" style="max-width:300px;margin-left:auto"></div>
+        <div class="tablewrap"><table id="orderHistoryTable"></table></div>
+      </div>
+    </section>
+
+
+    <section id="todayPage" class="page hidden">
+      <div class="notice">Admin mengubah status langsung dari dropdown. <b>Sementara Dibuat</b> belum masuk tagihan atau Rekap Mingguan. Setelah dipilih <b>Selesai</b>, pesanan otomatis masuk Rekap Mingguan dan menjadi tagihan siswa.</div>
+      <div class="grid four" id="todayStats" style="margin-top:14px"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="flex" style="margin-bottom:12px">
+          <input id="todaySearch" placeholder="Cari siswa / menu" style="max-width:320px">
+          <select id="todayStatusFilter" style="max-width:200px">
+            <option value="all">Semua Status</option>
+            <option value="preparing">Sementara Dibuat</option>
+            <option value="completed">Selesai</option>
+            <option value="cancel_pending">Menunggu Approval</option>
+            <option value="cancelled">Dibatalkan</option>
+          </select>
+        </div>
+        <div class="tablewrap"><table id="todayOrdersTable"></table></div>
+        <div id="todayOrdersMobile" class="hidden"></div>
+      </div>
+    </section>
+
+    <section id="weeklyPage" class="page hidden">
+      <div class="card">
+        <div class="flex"><input id="weekDate" type="date" style="max-width:180px"><select id="weekClass" style="max-width:160px"></select></div>
+        <div class="tablewrap"><table id="weeklyTable"></table></div>
+      </div>
+    </section>
+
+    <section id="billsPage" class="page hidden">
+      <div class="grid four" id="billStats"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="flex"><input id="billSearch" placeholder="Cari siswa" style="max-width:300px"><select id="billFilter" style="max-width:190px"><option value="all">Semua Saldo Aktif</option><option value="unpaid">Belum Lunas</option><option value="deposit">Deposit</option></select></div>
+        <div class="tablewrap"><table id="billsTable"></table></div>
+      </div>
+    </section>
+
+    <section id="paymentsPage" class="page hidden">
+      <div class="grid two">
+        <div class="card">
+          <div class="field"><label>Cari siswa</label><input id="paymentSearch" placeholder="Nama atau kelas"></div>
+          <div id="paymentResults" class="results"></div>
+          <div id="paymentSummary" class="notice" style="margin-top:12px">Pilih siswa untuk melihat tagihan.</div>
+          <div style="height:12px"></div>
+          <div class="field"><label>Tanggal</label><input id="paymentDate" type="date"></div>
+          <div class="field"><label>Nominal</label><input id="paymentAmount" type="number" min="0"></div>
+          <div class="field"><label>Metode</label><select id="paymentMethod"><option>Tunai</option><option>Transfer</option><option>QRIS</option></select></div>
+          <div class="field"><label>Keterangan</label><textarea id="paymentNote" rows="2"></textarea></div>
+          <button id="savePayment" class="btn primary">Simpan Pembayaran</button>
+        </div>
+        <div class="card"><h3 style="margin-top:0">Riwayat Pembayaran</h3><div class="tablewrap"><table id="paymentsTable"></table></div></div>
+      </div>
+    </section>
+
+    <section id="approvalsPage" class="page hidden">
+      <div class="notice" id="approvalNotice"></div>
+      <div class="card" style="margin-top:14px"><div class="tablewrap"><table id="approvalsTable"></table></div></div>
+    </section>
+
+    <section id="studentsPage" class="page hidden">
+      <div class="grid two">
+        <div class="card">
+          <h3 style="margin-top:0">Tambah Siswa</h3>
+          <div class="field"><label>Nama</label><input id="newStudentName"></div>
+          <div class="field"><label>Kelas</label><input id="newStudentClass"></div>
+          <button id="addStudent" class="btn primary">Tambah</button>
+          <div class="notice" style="margin-top:14px">Untuk menjaga histori transaksi, siswa yang tidak lagi digunakan sebaiknya <b>dinonaktifkan</b>, bukan dihapus permanen.</div>
+        </div>
+        <div class="card">
+          <div class="flex">
+            <div class="field grow"><label>Cari</label><input id="studentDataSearch" placeholder="Nama / kelas"></div>
+            <div class="field" style="min-width:165px"><label>Status</label><select id="studentStatusFilter"><option value="all">Semua</option><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select></div>
+          </div>
+          <div class="tablewrap"><table id="studentsTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="menusPage" class="page hidden">
+      <div class="grid two">
+        <div class="card">
+          <h3 style="margin-top:0">Tambah Menu</h3>
+          <div class="field"><label>Nama</label><input id="newMenuName"></div>
+          <div class="field"><label>Kategori</label><input id="newMenuCategory" value="Kidsmeal"></div>
+          <div class="field"><label>Harga</label><input id="newMenuPrice" type="number"></div>
+          <button id="addMenu" class="btn primary">Tambah</button>
+          <div class="notice" style="margin-top:14px">Menu lama sebaiknya <b>dinonaktifkan</b>. Histori pesanan tetap utuh.</div>
+        </div>
+        <div class="card">
+          <div class="flex" style="margin-bottom:12px">
+            <input id="menuDataSearch" placeholder="Cari menu / kategori" style="max-width:300px">
+            <select id="menuStatusFilter" style="max-width:170px"><option value="all">Semua</option><option value="active">Aktif</option><option value="inactive">Nonaktif</option></select>
+          </div>
+          <div class="tablewrap"><table id="menusTable"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="usersPage" class="page hidden">
+      <div id="usersAccessNotice" class="notice"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="flex" style="margin-bottom:12px">
+          <div>
+            <h3 style="margin:0">Manajemen User</h3>
+            <div class="muted" style="font-size:13px">Hanya Approver yang dapat mengubah role akun lain.</div>
+          </div>
+          <input id="userSearch" placeholder="Cari nama / email" style="max-width:300px;margin-left:auto">
+        </div>
+        <div class="tablewrap"><table id="usersTable"></table></div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<div id="cancelModal" class="modalbg hidden"><div class="modal">
+  <div class="flex"><h3 style="margin:0">Ajukan Pembatalan</h3><button id="closeCancel" class="btn small" style="margin-left:auto">✕</button></div>
+  <div id="cancelInfo" class="notice" style="margin:12px 0"></div>
+  <div class="field"><label>Alasan</label><select id="cancelReason"><option value="">Pilih...</option><option>Dibatalkan oleh pemesan</option><option>Pesanan tidak dibuat</option><option>Kesalahan input admin</option><option>Menu tidak tersedia</option><option>Lainnya</option></select></div>
+  <div class="field"><label>Catatan</label><textarea id="cancelNote" rows="3"></textarea></div>
+  <button id="submitCancel" class="btn primary">Ajukan Persetujuan</button>
+</div></div>
+
+<div id="approvalModal" class="modalbg hidden"><div class="modal">
+  <div class="flex"><h3 style="margin:0">Review Pembatalan</h3><button id="closeApproval" class="btn small" style="margin-left:auto">✕</button></div>
+  <div id="approvalInfo" class="notice" style="margin:12px 0"></div>
+  <div class="field"><label>Catatan keputusan</label><textarea id="approvalDecisionNote" rows="3"></textarea></div>
+  <div class="flex"><button id="rejectCancel" class="btn danger">Tolak</button><button id="approveCancel" class="btn primary grow">Setujui</button></div>
+</div></div>
+
+<script>
+const SUPABASE_URL="https://mskvsfxgzmlagfyjbaom.supabase.co";
+const SUPABASE_KEY="sb_publishable_skI5-iSiPe2iHWDJ1-aLEA_Ja7zDOjX";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);
+const rp=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(n||0));
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+const today=iso(new Date());
+$("orderDate").value=today;$("paymentDate").value=today;$("weekDate").value=today;
+
+let session=null,profile=null,students=[],menus=[],orders=[],payments=[],profiles=[];
+let selectedStudentId=null,selectedPaymentStudentId=null,cart={},cancelTarget=null,approvalTarget=null;
+
+function msg(text,show=true){$("authMessage").textContent=text;$("authMessage").classList.toggle("hidden",!show)}
+function showAuth(){ $("authView").classList.remove("hidden");$("appView").classList.add("hidden") }
+function showApp(){ $("authView").classList.add("hidden");$("appView").classList.remove("hidden") }
+
+$("showSignupBtn").onclick=()=>{$("authNameField").classList.remove("hidden");$("signupBtn").classList.remove("hidden");$("backLoginBtn").classList.remove("hidden");$("loginBtn").classList.add("hidden");$("showSignupBtn").classList.add("hidden");msg("",false)}
+$("backLoginBtn").onclick=()=>{$("authNameField").classList.add("hidden");$("signupBtn").classList.add("hidden");$("backLoginBtn").classList.add("hidden");$("loginBtn").classList.remove("hidden");$("showSignupBtn").classList.remove("hidden");msg("",false)}
+$("loginBtn").onclick=async()=>{msg("Sedang login...");const {error}=await sb.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPassword").value});if(error)return msg(error.message);msg("",false)}
+$("signupBtn").onclick=async()=>{const email=$("authEmail").value.trim(),password=$("authPassword").value,name=$("authName").value.trim();if(!name)return msg("Isi nama lengkap.");const {data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)return msg(error.message);msg(data.session?"Akun dibuat dan langsung login.":"Akun dibuat. Jika verifikasi email aktif, cek email sebelum login.")}
+$("logoutBtn").onclick=()=>sb.auth.signOut();
+
+async function bootstrap(){
+ const {data:{session:s}}=await sb.auth.getSession(); session=s;
+ if(!session){showAuth();return}
+ await loadProfile();showApp();await loadData();renderAll()
+}
+sb.auth.onAuthStateChange(async(_event,s)=>{session=s;if(!s){profile=null;showAuth()}else{await loadProfile();showApp();await loadData();renderAll()}})
+
+async function loadProfile(){
+ const {data,error}=await sb.from("profiles").select("id,full_name,role,email,created_at").eq("id",session.user.id).single();
+ if(error){console.error(error);return}
+ profile=data;$("currentUserName").textContent=profile.full_name;$("currentRole").textContent=profile.role==="approver"?"Approver":"Admin";
+}
+async function loadData(){
+ const [a,b,c,d,e]=await Promise.all([
+  sb.from("students").select("*").order("class_name").order("name"),
+  sb.from("menus").select("*").order("category").order("name"),
+  sb.from("orders").select("*,students(name,class_name),order_items(*)").order("order_date",{ascending:false}).limit(500),
+  sb.from("payments").select("*,students(name,class_name)").order("payment_date",{ascending:false}).limit(500),
+  sb.from("profiles").select("id,full_name,role,email,created_at")
+ ]);
+ [a,b,c,d,e].forEach(x=>{if(x.error)console.error(x.error)});
+ students=a.data||[];menus=b.data||[];orders=c.data||[];payments=d.data||[];profiles=e.data||[];
+}
+function profName(id){return profiles.find(p=>p.id===id)?.full_name||"-"}
+function orderTotal(o){return (o.order_items||[]).reduce((a,i)=>a+Number(i.unit_price)*Number(i.qty),0)}
+function activeOrder(o){return o.status!=="cancelled"}
+function billableOrder(o){return o.status!=="cancelled" && o.progress_status==="completed"}
+function balances(){
+ return students.map(s=>{
+  const total=orders.filter(o=>o.student_id===s.id&&billableOrder(o)).reduce((a,o)=>a+orderTotal(o),0);
+  const paid=payments.filter(p=>p.student_id===s.id).reduce((a,p)=>a+Number(p.amount),0);
+  return {...s,total,paid,balance:total-paid}
+ })
+}
+function statusBadge(o){
+ if(o.status==="cancel_pending")return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Persetujuan</span>';
+ if(o.status==="cancelled")return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
+ if(o.status==="cancel_rejected")return '<span class="pill">Pembatalan Ditolak</span>';
+ return '<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>';
+}
+const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
+document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(b.dataset.page+"Page").classList.remove("hidden");$("pageTitle").textContent=pages[b.dataset.page][0];$("pageSub").textContent=pages[b.dataset.page][1];renderAll()});
+
+function renderDashboard(){
+ const b=balances(),debt=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
+ const todayOrders=orders.filter(o=>o.order_date===today&&billableOrder(o));
+ $("dashboardPage").innerHTML=`<div class="grid four">
+ <div class="card stat"><div class="label">Pesanan Hari Ini</div><div class="value">${todayOrders.length}</div></div>
+ <div class="card stat"><div class="label">Penjualan Hari Ini</div><div class="value">${rp(todayOrders.reduce((a,o)=>a+orderTotal(o),0))}</div></div>
+ <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(debt.reduce((a,x)=>a+x.balance,0))}</div></div>
+ <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>
+ </div>
+ <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Sementara Dibuat belum menjadi tagihan. Selesai sudah masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td><td>${todayStatusBadge(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
+}
+function renderStudentSearch(){
+ const q=$("studentSearch").value.toLowerCase().trim(),list=students.filter(s=>s.active).filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q)).slice(0,20);
+ $("studentResults").innerHTML=list.map(s=>`<div class="rowpick" data-st="${s.id}"><b>${esc(s.name)}</b><span class="pill">${esc(s.class_name)}</span></div>`).join("")||'<div class="empty">Tidak ditemukan</div>';
+ document.querySelectorAll("[data-st]").forEach(x=>x.onclick=()=>{selectedStudentId=x.dataset.st;const s=students.find(a=>a.id===selectedStudentId);$("selectedStudent").innerHTML=`<b>${esc(s.name)}</b> • ${esc(s.class_name)}`})
+}
+$("studentSearch").oninput=renderStudentSearch;
+function renderMenusForOrder(){
+ const activeMenus=menus.filter(m=>m.active);const cats=["Semua",...new Set(activeMenus.map(m=>m.category))],old=$("menuFilter").value||"Semua";$("menuFilter").innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join("");if(cats.includes(old))$("menuFilter").value=old;
+ const f=$("menuFilter").value||"Semua",list=activeMenus.filter(m=>f==="Semua"||m.category===f);
+ $("menuGrid").innerHTML=list.map(m=>`<div class="menu"><div><b>${esc(m.name)}</b><div class="muted">${rp(m.price)} • ${esc(m.category)}</div></div><button class="circle" data-menu="${m.id}">+</button></div>`).join("");
+ document.querySelectorAll("[data-menu]").forEach(b=>b.onclick=()=>{cart[b.dataset.menu]=(cart[b.dataset.menu]||0)+1;renderCart()})
+}
+$("menuFilter").onchange=renderMenusForOrder;
+function renderCart(){
+ const x=Object.entries(cart).filter(([_,q])=>q>0);
+ $("cart").innerHTML=x.map(([id,q])=>{const m=menus.find(z=>z.id===id);return `<div class="cartrow"><div><b>${esc(m.name)}</b><div class="muted">${rp(m.price)}</div></div><div class="qty"><button data-qminus="${id}">−</button><b>${q}</b><button data-qplus="${id}">+</button></div><b>${rp(Number(m.price)*q)}</b></div>`}).join("")||'<div class="empty">Belum ada menu</div>';
+ document.querySelectorAll("[data-qminus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qminus]--;if(cart[b.dataset.qminus]<=0)delete cart[b.dataset.qminus];renderCart()});
+ document.querySelectorAll("[data-qplus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qplus]++;renderCart()});
+ $("cartTotal").textContent=rp(x.reduce((a,[id,q])=>a+Number(menus.find(m=>m.id===id).price)*q,0))
+}
+$("saveOrder").onclick=async()=>{
+ if(!selectedStudentId)return alert("Pilih siswa.");
+ const items=Object.entries(cart).filter(([_,q])=>q>0);if(!items.length)return alert("Pilih menu.");
+ $("saveOrder").disabled=true;
+ const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",created_by:session.user.id}).select().single();
+ if(error){$("saveOrder").disabled=false;return alert(error.message)}
+ const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
+ const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
+ if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();alert("Pesanan tersimpan online.")
+}
+
+
+function effectiveTodayStatus(o){
+ if(o.status==="cancelled") return "cancelled";
+ if(o.status==="cancel_pending") return "cancel_pending";
+ return o.progress_status||"preparing";
+}
+function todayStatusBadge(o){
+ const s=effectiveTodayStatus(o);
+ if(s==="completed") return '<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>';
+ if(s==="cancelled") return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
+ if(s==="cancel_pending") return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
+ return '<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>';
+}
+
+function renderTodayOrders(){
+ const q=$("todaySearch").value.toLowerCase().trim();
+ const f=$("todayStatusFilter").value;
+ let list=orders.filter(o=>o.order_date===today);
+ list=list.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q));
+ list=list.filter(o=>f==="all"||effectiveTodayStatus(o)===f);
+ list.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+
+ const prep=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="preparing").length;
+ const done=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="completed").length;
+ const pend=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="cancel_pending").length;
+ const canc=orders.filter(o=>o.order_date===today&&effectiveTodayStatus(o)==="cancelled").length;
+
+ $("todayStats").innerHTML=`
+ <div class="card stat"><div class="label">Sementara Dibuat</div><div class="value">${prep}</div></div>
+ <div class="card stat"><div class="label">Selesai</div><div class="value">${done}</div></div>
+ <div class="card stat"><div class="label">Menunggu Approval</div><div class="value">${pend}</div></div>
+ <div class="card stat"><div class="label">Dibatalkan</div><div class="value">${canc}</div></div>`;
+
+ $("todayOrdersTable").innerHTML=`<thead><tr>
+   <th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th><th>Pembatalan</th>
+ </tr></thead><tbody>${
+   list.map(o=>{
+     const eff=effectiveTodayStatus(o);
+
+     let statusControl="";
+     if(o.status==="cancelled"){
+       statusControl='<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
+     }else if(o.status==="cancel_pending"){
+       statusControl='<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
+     }else if(profile?.role==="admin"){
+       statusControl=`<select data-progress-select="${o.id}" style="min-width:170px">
+         <option value="preparing" ${eff==="preparing"?"selected":""}>Sementara Dibuat</option>
+         <option value="completed" ${eff==="completed"?"selected":""}>Selesai</option>
+       </select>`;
+     }else{
+       statusControl=todayStatusBadge(o);
+     }
+
+     const cancelAction=(profile?.role==="admin"&&o.status==="active")
+       ? `<button class="btn small danger" data-today-cancel="${o.id}">Ajukan Batal</button>`
+       : (o.status==="cancel_pending"?'<span class="muted">Menunggu approval</span>':"");
+
+     return `<tr>
+       <td><b>${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</b></td>
+       <td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td>
+       <td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td>
+       <td>${statusControl}</td>
+       <td class="money">${rp(orderTotal(o))}</td>
+       <td>${cancelAction}</td>
+     </tr>`;
+   }).join("") || '<tr><td colspan="6" class="empty">Belum ada pesanan hari ini</td></tr>'
+ }</tbody>`;
+
+
+ $("todayOrdersMobile").innerHTML=list.map(o=>{
+   const eff=effectiveTodayStatus(o);
+   let statusControl="";
+   if(o.status==="cancelled"){
+     statusControl='<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
+   }else if(o.status==="cancel_pending"){
+     statusControl='<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
+   }else if(profile?.role==="admin"){
+     statusControl=`<select data-progress-select-mobile="${o.id}">
+       <option value="preparing" ${eff==="preparing"?"selected":""}>Sementara Dibuat</option>
+       <option value="completed" ${eff==="completed"?"selected":""}>Selesai</option>
+     </select>`;
+   }else{
+     statusControl=todayStatusBadge(o);
+   }
+
+   const cancelAction=(profile?.role==="admin"&&o.status==="active")
+     ? `<button class="btn small danger" data-today-cancel-mobile="${o.id}">Ajukan Batal</button>`
+     : "";
+
+   return `<div class="today-card">
+     <div class="today-card-head">
+       <div><div class="student-name">${esc(o.students?.name||"-")}</div><div class="muted">${esc(o.students?.class_name||"")}</div></div>
+       <div class="time">${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div>
+     </div>
+     <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</div>
+     <div class="row"><span class="muted">Total</span><b>${rp(orderTotal(o))}</b></div>
+     <div class="row"><span class="muted">Status</span>${statusControl}</div>
+     ${cancelAction?`<div class="row">${cancelAction}</div>`:""}
+   </div>`;
+ }).join("") || '<div class="empty">Belum ada pesanan hari ini</div>';
+
+ document.querySelectorAll("[data-progress-select-mobile]").forEach(sel=>{
+   sel.onchange=async()=>{
+     if(profile?.role!=="admin"){await loadData();renderAll();return}
+     const newStatus=sel.value;
+     const warning=newStatus==="completed"
+       ?"Ubah status menjadi Selesai? Pesanan akan masuk Rekap Mingguan dan menjadi tagihan siswa."
+       :"Ubah status menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
+     if(!confirm(warning)){await loadData();renderAll();return}
+     const {error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",sel.dataset.progressSelectMobile).eq("status","active");
+     if(error){alert(error.message);await loadData();renderAll();return}
+     await loadData();renderAll();
+   }
+ });
+ document.querySelectorAll("[data-today-cancel-mobile]").forEach(b=>b.onclick=()=>openCancel(b.dataset.todayCancelMobile));
+
+ document.querySelectorAll("[data-progress-select]").forEach(sel=>{
+   sel.onchange=async()=>{
+     if(profile?.role!=="admin"){ await loadData(); renderAll(); return; }
+     const newStatus=sel.value;
+     const warning=newStatus==="completed"
+       ?"Ubah status menjadi Selesai? Pesanan akan masuk Rekap Mingguan dan menjadi tagihan siswa."
+       :"Ubah status menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
+     if(!confirm(warning)){ await loadData(); renderAll(); return; }
+
+     const {error}=await sb.from("orders")
+       .update({progress_status:newStatus})
+       .eq("id",sel.dataset.progressSelect)
+       .eq("status","active");
+
+     if(error){ alert(error.message); await loadData(); renderAll(); return; }
+     await loadData(); renderAll();
+   };
+ });
+ document.querySelectorAll("[data-today-cancel]").forEach(b=>b.onclick=()=>openCancel(b.dataset.todayCancel));
+}
+$("todaySearch").oninput=renderTodayOrders;
+$("todayStatusFilter").onchange=renderTodayOrders;
+
+function renderOrderHistory(){
+ const q=$("orderHistorySearch").value.toLowerCase().trim();let list=orders.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q)).slice(0,100);
+ $("orderHistoryTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status</th><th>Alasan/Audit</th><th class="money">Total</th><th></th></tr></thead><tbody>${list.map(o=>{let audit="-";if(o.cancel_reason){audit=`<b>${esc(o.cancel_reason)}</b>${o.cancel_note?`<div>${esc(o.cancel_note)}</div>`:""}<div class="muted">Pengaju: ${esc(profName(o.cancel_requested_by))}</div>${o.cancel_decided_by?`<div class="muted">Keputusan: ${esc(profName(o.cancel_decided_by))}</div>`:""}`};const action=(profile?.role==="admin"&&(o.status==="active"||o.status==="cancel_rejected"))?`<button class="btn small danger" data-cancel="${o.id}">Ajukan Batal</button>`:(profile?.role==="approver"&&(o.status==="active"||o.status==="cancel_rejected")?`<span class="muted">Admin yang mengajukan</span>`:"");return `<tr><td>${o.order_date}</td><td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td><td>${statusBadge(o)}<div style="margin-top:4px">${o.status==="active"?(o.progress_status==="completed"?'<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>':'<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>'):""}</div></td><td>${audit}</td><td class="money">${rp(orderTotal(o))}</td><td>${action}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Belum ada pesanan</td></tr>'}</tbody>`;
+ document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>openCancel(b.dataset.cancel))
+}
+$("orderHistorySearch").oninput=renderOrderHistory;
+function openCancel(id){if(profile?.role!=="admin")return alert("Hanya Admin yang dapat mengajukan pembatalan.");cancelTarget=orders.find(o=>o.id===id);$("cancelInfo").innerHTML=`<b>${esc(cancelTarget.students?.name||"-")}</b> • ${cancelTarget.order_date}<br>${cancelTarget.order_items.map(i=>esc(i.menu_name)+" ×"+i.qty).join(", ")} • <b>${rp(orderTotal(cancelTarget))}</b>`;$("cancelReason").value="";$("cancelNote").value="";$("cancelModal").classList.remove("hidden")}
+$("closeCancel").onclick=()=>$("cancelModal").classList.add("hidden");
+$("submitCancel").onclick=async()=>{if(profile?.role!=="admin")return alert("Hanya Admin yang dapat mengajukan pembatalan.");if(!cancelTarget)return;const reason=$("cancelReason").value,note=$("cancelNote").value.trim();if(!reason)return alert("Pilih alasan.");if(reason==="Lainnya"&&!note)return alert("Isi catatan untuk alasan lainnya.");const {error}=await sb.from("orders").update({status:"cancel_pending",cancel_reason:reason,cancel_note:note,cancel_requested_by:session.user.id,cancel_requested_at:new Date().toISOString()}).eq("id",cancelTarget.id);if(error)return alert(error.message);$("cancelModal").classList.add("hidden");await loadData();renderAll();alert("Permintaan pembatalan diajukan.")}
+
+function startWeek(ds){const d=new Date(ds+"T00:00:00"),day=d.getDay(),diff=day===0?-6:1-day;d.setDate(d.getDate()+diff);return d}
+function renderWeekly(){
+ const base=startWeek($("weekDate").value),days=[0,1,2,3,4,5,6].map(n=>{const d=new Date(base);d.setDate(base.getDate()+n);return{date:iso(d),label:d.toLocaleDateString("id-ID",{weekday:"short",day:"2-digit",month:"2-digit"})}});
+ const cs=["Semua",...new Set(students.map(s=>s.class_name))].sort(),old=$("weekClass").value||"Semua";$("weekClass").innerHTML=cs.map(c=>`<option>${esc(c)}</option>`).join("");if(cs.includes(old))$("weekClass").value=old;
+ const cls=$("weekClass").value||"Semua";const rows=students.filter(s=>cls==="Semua"||s.class_name===cls).map(s=>({s,cells:days.map(d=>orders.filter(o=>o.student_id===s.id&&o.order_date===d.date&&billableOrder(o)))})).filter(x=>x.cells.some(c=>c.length));
+ $("weeklyTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas</th>${days.map(d=>`<th>${d.label}</th>`).join("")}<th>Total</th></tr></thead><tbody>${rows.map(r=>{let total=0;return `<tr><td><b>${esc(r.s.name)}</b></td><td>${esc(r.s.class_name)}</td>${r.cells.map(os=>{let t=os.reduce((a,o)=>a+orderTotal(o),0);total+=t;return `<td>${os.flatMap(o=>o.order_items).map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${t?`<div class="money"><b>${rp(t)}</b></div>`:"-"}</td>`}).join("")}<td class="money"><b>${rp(total)}</b></td></tr>`}).join("")||'<tr><td colspan="10" class="empty">Tidak ada pesanan minggu ini</td></tr>'}</tbody>`
+}
+$("weekDate").onchange=renderWeekly;$("weekClass").onchange=renderWeekly;
+
+function renderBills(){
+ const b=balances(),un=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
+ $("billStats").innerHTML=`<div class="card stat"><div class="label">Belum Lunas</div><div class="value">${un.length}</div></div><div class="card stat"><div class="label">Total Tagihan</div><div class="value">${rp(un.reduce((a,x)=>a+x.balance,0))}</div></div><div class="card stat"><div class="label">Deposit</div><div class="value">${dep.length}</div></div><div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>`;
+ const q=$("billSearch").value.toLowerCase().trim(),f=$("billFilter").value;let rows=b.filter(x=>x.balance!==0).filter(x=>!q||(x.name+" "+x.class_name).toLowerCase().includes(q)).filter(x=>f==="all"||(f==="unpaid"?x.balance>0:x.balance<0));
+ $("billsTable").innerHTML=`<thead><tr><th>Siswa</th><th>Kelas</th><th>Status</th><th class="money">Pesanan</th><th class="money">Dibayar</th><th class="money">Saldo</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.class_name)}</td><td>${x.balance<0?'<span class="pill" style="background:#ecfdf5;color:#047857">Deposit</span>':'<span class="pill" style="background:#fff0f2;color:#be123c">Belum Lunas</span>'}</td><td class="money">${rp(x.total)}</td><td class="money">${rp(x.paid)}</td><td class="money ${x.balance<0?"positive":"negative"}"><b>${x.balance<0?"+ "+rp(Math.abs(x.balance)):rp(x.balance)}</b></td></tr>`).join("")||'<tr><td colspan="6" class="empty">Tidak ada saldo aktif</td></tr>'}</tbody>`
+}
+$("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;
+
+function renderPaymentSearch(){
+ const q=$("paymentSearch").value.toLowerCase().trim();
+ const b=balances();
+ const list=b
+   .filter(s=>s.active||s.balance!==0)
+   .filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q))
+   .sort((a,b)=>a.name.localeCompare(b.name,"id"))
+   .slice(0,30);
+
+ $("paymentResults").innerHTML=list.map(s=>`
+   <div class="rowpick ${selectedPaymentStudentId===s.id?"selected":""}" data-paystudent="${s.id}">
+     <div>
+       <b>${esc(s.name)}</b>
+       <div class="muted">${esc(s.class_name)}</div>
+     </div>
+     <span class="pill">${s.balance>0?"Tagihan "+rp(s.balance):s.balance<0?"Deposit "+rp(Math.abs(s.balance)):"Lunas"}</span>
+   </div>
+ `).join("") || '<div class="empty">'+(!students.length?'Belum ada data siswa':'Tidak ditemukan')+'</div>';
+
+ document.querySelectorAll("[data-paystudent]").forEach(el=>{
+   el.onclick=()=>{
+     selectedPaymentStudentId=el.dataset.paystudent;
+     const s=b.find(z=>z.id===selectedPaymentStudentId);
+     if(s){
+       $("paymentSearch").value=s.name;
+       $("paymentSummary").innerHTML=`<b>${esc(s.name)} • ${esc(s.class_name)}</b><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+     }
+     renderPaymentSearch();
+     renderPaymentsTable();
+   };
+ });
+
+ if(!students.length){
+   $("paymentSummary").innerHTML='<b>Belum ada data siswa.</b>';
+ }else if(selectedPaymentStudentId){
+   const s=b.find(z=>z.id===selectedPaymentStudentId);
+   if(s){
+     $("paymentSummary").innerHTML=`<b>${esc(s.name)} • ${esc(s.class_name)}</b><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+   }
+ }else{
+   $("paymentSummary").innerHTML='Pilih siswa untuk melihat tagihan.';
+ }
+}
+
+$("paymentSearch").oninput=renderPaymentSearch;
+function renderPaymentsTable(){let list=[...payments];if(selectedPaymentStudentId)list=list.filter(p=>p.student_id===selectedPaymentStudentId);$("paymentsTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th class="money">Nominal</th><th>Metode</th></tr></thead><tbody>${list.slice(0,60).map(p=>`<tr><td>${p.payment_date}</td><td>${esc(p.students?.name||"-")}</td><td class="money positive">${rp(p.amount)}</td><td>${esc(p.method)}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Belum ada pembayaran</td></tr>'}</tbody>`}
+$("savePayment").onclick=async()=>{if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});if(error)return alert(error.message);$("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.")}
+
+function renderApprovals(){
+ const pending=orders.filter(o=>o.status==="cancel_pending");$("approvalNotice").innerHTML=profile?.role==="approver"?`Anda login sebagai <b>Approver</b>. Approver hanya melakukan <b>Setujui/Tolak</b> atas pembatalan yang diajukan Admin.`:`Anda login sebagai <b>Admin</b>. Admin dapat mengajukan pembatalan, tetapi keputusan hanya dapat dilakukan oleh akun Approver.`;
+ $("approvalsTable").innerHTML=`<thead><tr><th>Diajukan</th><th>Siswa</th><th>Pesanan</th><th>Alasan</th><th>Pengaju</th><th></th></tr></thead><tbody>${pending.map(o=>`<tr><td>${o.cancel_requested_at?new Date(o.cancel_requested_at).toLocaleString("id-ID"):"-"}</td><td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}<div class="money">${rp(orderTotal(o))}</div></td><td><b>${esc(o.cancel_reason||"-")}</b>${o.cancel_note?`<div>${esc(o.cancel_note)}</div>`:""}</td><td>${esc(profName(o.cancel_requested_by))}</td><td>${profile?.role==="approver"?`<button class="btn small primary" data-review="${o.id}">Review</button>`:'<span class="muted">Approver only</span>'}</td></tr>`).join("")||'<tr><td colspan="6" class="empty">Tidak ada permintaan menunggu</td></tr>'}</tbody>`;
+ document.querySelectorAll("[data-review]").forEach(b=>b.onclick=()=>openApproval(b.dataset.review))
+}
+function openApproval(id){approvalTarget=orders.find(o=>o.id===id);$("approvalInfo").innerHTML=`<b>${esc(approvalTarget.students?.name||"-")}</b> • ${approvalTarget.order_date}<br><b>Alasan:</b> ${esc(approvalTarget.cancel_reason||"-")}<br>Pengaju: ${esc(profName(approvalTarget.cancel_requested_by))}`;$("approvalDecisionNote").value="";$("approvalModal").classList.remove("hidden")}
+$("closeApproval").onclick=()=>$("approvalModal").classList.add("hidden");
+async function decide(status){if(!approvalTarget)return;const {error}=await sb.from("orders").update({status,cancel_decision_note:$("approvalDecisionNote").value.trim(),cancel_decided_by:session.user.id,cancel_decided_at:new Date().toISOString()}).eq("id",approvalTarget.id);if(error)return alert(error.message);$("approvalModal").classList.add("hidden");await loadData();renderAll();alert(status==="cancelled"?"Pembatalan disetujui.":"Pembatalan ditolak.")}
+$("approveCancel").onclick=()=>decide("cancelled");$("rejectCancel").onclick=()=>decide("cancel_rejected");
+
+function renderStudents(){
+ const q=$("studentDataSearch").value.toLowerCase().trim(),f=$("studentStatusFilter").value;
+ const list=students.filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q)).filter(s=>f==="all"||(f==="active"?s.active:!s.active));
+ $("studentsTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas</th><th>Status</th><th></th></tr></thead><tbody>${list.map(s=>`<tr>
+ <td><input data-sname="${s.id}" value="${esc(s.name)}"></td>
+ <td><input data-sclass="${s.id}" value="${esc(s.class_name)}"></td>
+ <td>${s.active?'<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>':'<span class="pill">Nonaktif</span>'}</td>
+ <td><div class="flex"><button class="btn small" data-ssave="${s.id}">Simpan</button><button class="btn small ${s.active?"danger":""}" data-stoggle="${s.id}">${s.active?"Nonaktifkan":"Aktifkan"}</button></div></td>
+ </tr>`).join("")||'<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'}</tbody>`;
+ document.querySelectorAll("[data-ssave]").forEach(b=>b.onclick=async()=>{const id=b.dataset.ssave,name=document.querySelector(`[data-sname="${id}"]`).value.trim(),class_name=document.querySelector(`[data-sclass="${id}"]`).value.trim();if(!name)return alert("Nama siswa tidak boleh kosong.");const {error}=await sb.from("students").update({name,class_name,updated_at:new Date().toISOString()}).eq("id",id);if(error)return alert(error.message);await loadData();renderAll();alert("Data siswa disimpan.")});
+ document.querySelectorAll("[data-stoggle]").forEach(b=>b.onclick=async()=>{const s=students.find(x=>x.id===b.dataset.stoggle);if(!s)return;if(!confirm(`${s.active?"Nonaktifkan":"Aktifkan kembali"} ${s.name}?`))return;const {error}=await sb.from("students").update({active:!s.active,updated_at:new Date().toISOString()}).eq("id",s.id);if(error)return alert(error.message);await loadData();renderAll()});
+}
+$("studentDataSearch").oninput=renderStudents;
+$("studentStatusFilter").onchange=renderStudents;
+$("addStudent").onclick=async()=>{const name=$("newStudentName").value.trim(),class_name=$("newStudentClass").value.trim();if(!name)return alert("Isi nama.");const {error}=await sb.from("students").insert({name,class_name,active:true});if(error)return alert(error.message);$("newStudentName").value="";$("newStudentClass").value="";await loadData();renderAll()}
+
+function renderMenuData(){
+ const q=$("menuDataSearch").value.toLowerCase().trim(),f=$("menuStatusFilter").value;
+ const list=menus.filter(m=>!q||(m.name+" "+m.category).toLowerCase().includes(q)).filter(m=>f==="all"||(f==="active"?m.active:!m.active));
+ $("menusTable").innerHTML=`<thead><tr><th>Menu</th><th>Kategori</th><th class="money">Harga</th><th>Status</th><th></th></tr></thead><tbody>${list.map(m=>`<tr>
+ <td><input data-mname="${m.id}" value="${esc(m.name)}"></td>
+ <td><input data-mcat="${m.id}" value="${esc(m.category)}"></td>
+ <td><input type="number" data-mprice="${m.id}" value="${Number(m.price)}"></td>
+ <td>${m.active?'<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>':'<span class="pill">Nonaktif</span>'}</td>
+ <td><div class="flex"><button class="btn small" data-msave="${m.id}">Simpan</button><button class="btn small ${m.active?"danger":""}" data-mtoggle="${m.id}">${m.active?"Nonaktifkan":"Aktifkan"}</button></div></td>
+ </tr>`).join("")||'<tr><td colspan="5" class="empty">Tidak ada data menu</td></tr>'}</tbody>`;
+ document.querySelectorAll("[data-msave]").forEach(b=>b.onclick=async()=>{const id=b.dataset.msave,name=document.querySelector(`[data-mname="${id}"]`).value.trim(),category=document.querySelector(`[data-mcat="${id}"]`).value.trim(),price=Number(document.querySelector(`[data-mprice="${id}"]`).value);if(!name)return alert("Nama menu tidak boleh kosong.");const {error}=await sb.from("menus").update({name,category,price,updated_at:new Date().toISOString()}).eq("id",id);if(error)return alert(error.message);await loadData();renderAll();alert("Menu disimpan.")});
+ document.querySelectorAll("[data-mtoggle]").forEach(b=>b.onclick=async()=>{const m=menus.find(x=>x.id===b.dataset.mtoggle);if(!m)return;if(!confirm(`${m.active?"Nonaktifkan":"Aktifkan kembali"} menu ${m.name}?`))return;const {error}=await sb.from("menus").update({active:!m.active,updated_at:new Date().toISOString()}).eq("id",m.id);if(error)return alert(error.message);await loadData();renderAll()});
+}
+$("menuDataSearch").oninput=renderMenuData;
+$("menuStatusFilter").onchange=renderMenuData;
+$("addMenu").onclick=async()=>{const name=$("newMenuName").value.trim(),category=$("newMenuCategory").value.trim(),price=Number($("newMenuPrice").value||0);if(!name)return alert("Isi nama menu.");const {error}=await sb.from("menus").insert({name,category,price,active:true});if(error)return alert(error.message);$("newMenuName").value="";$("newMenuPrice").value="";await loadData();renderAll()}
+
+function renderUsers(){
+ const isApprover=profile?.role==="approver";
+ $("usersNav").classList.toggle("hidden",!isApprover);
+ $("usersAccessNotice").innerHTML=isApprover?'Anda login sebagai <b>Approver</b>. Anda dapat mengubah role akun lain. Role akun Anda sendiri tidak dapat diubah dari sini.':'Halaman ini hanya dapat dikelola oleh <b>Approver</b>.';
+ const q=$("userSearch").value.toLowerCase().trim();
+ const list=profiles.filter(u=>!q||((u.full_name||"")+" "+(u.email||"")+" "+u.role).toLowerCase().includes(q));
+ $("usersTable").innerHTML=`<thead><tr><th>Nama</th><th>Email</th><th>Role</th><th>Dibuat</th><th></th></tr></thead><tbody>${list.map(u=>{const self=u.id===session.user.id;return `<tr><td><b>${esc(u.full_name||"-")}</b>${self?'<div class="muted">Akun Anda</div>':""}</td><td>${esc(u.email||"-")}</td><td>${self||!isApprover?`<span class="pill">${u.role==="approver"?"Approver":"Admin"}</span>`:`<select data-role-select="${u.id}" style="min-width:130px"><option value="admin" ${u.role==="admin"?"selected":""}>Admin</option><option value="approver" ${u.role==="approver"?"selected":""}>Approver</option></select>`}</td><td>${u.created_at?new Date(u.created_at).toLocaleDateString("id-ID"):"-"}</td><td>${!self&&isApprover?`<button class="btn small primary" data-role-save="${u.id}">Simpan Role</button>`:""}</td></tr>`}).join("")||'<tr><td colspan="5" class="empty">Belum ada akun</td></tr>'}</tbody>`;
+ document.querySelectorAll("[data-role-save]").forEach(b=>b.onclick=async()=>{const id=b.dataset.roleSave,new_role=document.querySelector(`[data-role-select="${id}"]`).value,target=profiles.find(x=>x.id===id);if(!confirm(`Ubah role ${target?.full_name||"akun"} menjadi ${new_role==="approver"?"Approver":"Admin"}?`))return;const {error}=await sb.from("profiles").update({role:new_role}).eq("id",id);if(error)return alert(error.message);await loadProfile();await loadData();renderAll();alert("Role berhasil diperbarui.")});
+}
+$("userSearch").oninput=renderUsers;
+
+
+function applyRoleNavigation(){
+ const isApprover=profile?.role==="approver";
+
+ // Admin sees: Dashboard, Input Pesanan, Rekap Pesanan Hari Ini, Pembayaran.
+ ["navWeekly","navBills","navApprovals","navStudents","navMenus","usersNav"].forEach(id=>{
+   const el=$(id);
+   if(el) el.classList.toggle("hidden", !isApprover);
+ });
+
+ ["navDashboard","navOrders","todayNav","navPayments"].forEach(id=>{
+   const el=$(id);
+   if(el) el.classList.remove("hidden");
+ });
+
+ // If an Admin somehow lands on a restricted page, redirect to Dashboard.
+ if(!isApprover){
+   const restricted=["weeklyPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
+   const current=document.querySelector(".page:not(.hidden)");
+   if(current && restricted.includes(current.id)){
+     document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
+     $("dashboardPage").classList.remove("hidden");
+     document.querySelectorAll("[data-page]").forEach(x=>x.classList.remove("active"));
+     $("navDashboard")?.classList.add("active");
+     $("pageTitle").textContent="Dashboard";
+     $("pageSub").textContent="Ringkasan data online";
+   }
+ }
+}
+
+function renderAll(){
+ renderDashboard();
+ renderStudentSearch();
+ renderMenusForOrder();
+ renderCart();
+ renderTodayOrders();
+ renderOrderHistory();
+ renderWeekly();
+ renderBills();
+ renderPaymentSearch();
+ renderPaymentsTable();
+ renderApprovals();
+ renderStudents();
+ renderMenuData();
+ renderUsers();
+ applyRoleNavigation();
+}
+bootstrap();
+</script>
+</body></html>
