@@ -385,6 +385,13 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   border-top:2px solid var(--line);
 }
 
+
+.hold-section{border:2px solid #c4b5fd;background:#faf8ff}
+.hold-title{color:#6d28d9;margin:0}
+.hold-badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#ede9fe;color:#6d28d9;font-size:11px;font-weight:900}
+.hold-pay-btn{background:#7c3aed!important;border-color:#7c3aed!important;color:#fff!important;font-weight:900}
+#heldOrdersMobile{display:none}
+@media(max-width:650px){#heldOrdersTable{display:none}#heldOrdersMobile{display:block}.hold-pay-btn{width:100%;min-height:46px}}
 </style>
 </head>
 <body>
@@ -446,6 +453,13 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
           <div id="selectedStudent" class="notice" style="margin-top:12px">Belum ada siswa dipilih.</div>
           <div id="cart" style="margin-top:10px"></div>
           <div class="flex" style="padding-top:14px;font-size:20px"><b>Total</b><b id="cartTotal" style="margin-left:auto">Rp0</b></div>
+
+          <div class="field" style="margin-top:14px">
+            <label>📝 Catatan Pesanan</label>
+            <textarea id="orderNote" rows="3" placeholder="Contoh: tanpa sambal, nasi sedikit, alergi telur, ambil saat istirahat..."></textarea>
+            <div class="muted" style="font-size:12px">Opsional. Catatan akan tampil di rekap pesanan.</div>
+          </div>
+
           <div class="breakfast-option">
   <label>
     <input id="isBreakfastOrder" type="checkbox">
@@ -489,6 +503,12 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
         </div>
         <div class="tablewrap"><table id="todayOrdersTable"></table></div>
         <div id="todayOrdersMobile" class="hidden"></div>
+      </div>
+      <div class="card hold-section" style="margin-top:14px">
+        <div class="flex" style="margin-bottom:10px"><h3 class="hold-title">⏸️ Pesanan Ter-Hold</h3><span id="heldCount" class="breakfast-count" style="background:#7c3aed">0</span></div>
+        <div class="muted" style="margin-bottom:10px">Pesanan siswa dengan tunggakan lebih dari 2 pekan. Pesanan tetap tercatat tetapi ditahan sampai tunggakan dibayar.</div>
+        <div class="tablewrap"><table id="heldOrdersTable"></table></div>
+        <div id="heldOrdersMobile"></div>
       </div>
     </section>
 
@@ -679,6 +699,10 @@ function statusBadge(o){
  if(o.status==="cancel_rejected")return '<span class="pill">Pembatalan Ditolak</span>';
  return '<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>';
 }
+function orderNoteHtml(o){
+ const n=(o.order_note||"").trim();
+ return n?`<div class="notice" style="margin-top:7px;padding:8px 10px;background:#f8fafc;border-color:#e2e8f0"><b>📝 Catatan:</b> ${esc(n)}</div>`:"";
+}
 const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(b.dataset.page+"Page").classList.remove("hidden");$("pageTitle").textContent=pages[b.dataset.page][0];$("pageSub").textContent=pages[b.dataset.page][1];renderAll()});
 
@@ -691,7 +715,7 @@ function renderDashboard(){
  <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(debt.reduce((a,x)=>a+x.balance,0))}</div></div>
  <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>
  </div>
- <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Sementara Dibuat belum menjadi tagihan. Selesai sudah masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td><td>${todayStatusBadge(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
+ <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Sementara Dibuat belum menjadi tagihan. Selesai sudah masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${todayStatusBadge(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
 }
 function renderStudentSearch(){
  const q=$("studentSearch").value.toLowerCase().trim(),list=students.filter(s=>s.active).filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q)).slice(0,20);
@@ -749,11 +773,11 @@ $("saveOrder").onclick=async()=>{
  if(!selectedStudentId)return alert("Pilih siswa.");
  const items=Object.entries(cart).filter(([_,q])=>q>0);if(!items.length)return alert("Pilih menu.");
  $("saveOrder").disabled=true;
- const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",is_breakfast:$("isBreakfastOrder").checked,created_by:session.user.id}).select().single();
+ const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",is_breakfast:$("isBreakfastOrder").checked,order_note:$("orderNote").value.trim()||null,created_by:session.user.id}).select().single();
  if(error){$("saveOrder").disabled=false;return alert(error.message)}
  const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
  const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
- if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("isBreakfastOrder").checked=false;$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
+ if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("isBreakfastOrder").checked=false;$("orderNote").value="";$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
 }
 
 
@@ -763,6 +787,7 @@ function effectiveTodayStatus(o){
  return o.progress_status||"preparing";
 }
 function todayStatusBadge(o){
+ if(o.is_hold)return '<span class="hold-badge">⏸️ TER-HOLD</span>';
  const s=effectiveTodayStatus(o);
  if(s==="completed") return '<span class="pill status-soft-completed">Selesai</span>';
  if(s==="cancelled") return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
@@ -778,8 +803,9 @@ function renderTodayOrders(){
  filtered=filtered.filter(o=>f==="all"||effectiveTodayStatus(o)===f);
  filtered.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 
- const breakfast=filtered.filter(o=>o.is_breakfast);
- const list=filtered.filter(o=>!o.is_breakfast);
+ const held=filtered.filter(o=>o.is_hold);
+ const breakfast=filtered.filter(o=>!o.is_hold&&o.is_breakfast);
+ const list=filtered.filter(o=>!o.is_hold&&!o.is_breakfast);
 
  const prep=allToday.filter(o=>effectiveTodayStatus(o)==="preparing").length;
  const done=allToday.filter(o=>effectiveTodayStatus(o)==="completed").length;
@@ -792,9 +818,10 @@ function renderTodayOrders(){
  <div class="card stat"><div class="label">Menunggu Approval</div><div class="value">${pend}</div></div>
  <div class="card stat"><div class="label">Dibatalkan</div><div class="value">${canc}</div></div>`;
 
- $("breakfastCount").textContent=breakfast.length;
+ $("breakfastCount").textContent=breakfast.length; $("heldCount").textContent=held.length;
 
  const statusControlFor=(o,mobile=false)=>{
+   if(o.is_hold)return '<span class="hold-badge">⏸️ TER-HOLD</span>';
    const eff=effectiveTodayStatus(o);
    if(o.status==="cancelled") return '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>';
    if(o.status==="cancel_pending") return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>';
@@ -823,7 +850,7 @@ function renderTodayOrders(){
  const desktopRows=(arr,emptyText)=>arr.map(o=>`<tr>
    <td><b>${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</b></td>
    <td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td>
-   <td>${o.is_breakfast?'<span class="breakfast-badge">🌅 SARAPAN</span><br>':""}${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td>
+   <td>${o.is_breakfast?'<span class="breakfast-badge">🌅 SARAPAN</span><br>':""}${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td>
    <td>${statusControlFor(o,false)}</td>
    <td class="money">${rp(orderTotal(o))}</td>
    <td>${cancelActionFor(o,false)}</td>
@@ -834,7 +861,7 @@ function renderTodayOrders(){
      <div><div class="student-name">${esc(o.students?.name||"-")}</div><div class="muted">${esc(o.students?.class_name||"")}</div></div>
      <div style="text-align:right">${o.is_breakfast?'<div class="breakfast-badge">🌅 SARAPAN</div>':""}<div class="time" style="margin-top:4px">${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</div></div>
    </div>
-   <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</div>
+   <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</div>
    <div class="row"><span class="muted">Total</span><b>${rp(orderTotal(o))}</b></div>
    <div class="row"><span class="muted">Status</span>${statusControlFor(o,true)}</div>
    ${cancelActionFor(o,true)?`<div class="row">${cancelActionFor(o,true)}</div>`:""}
@@ -846,17 +873,44 @@ function renderTodayOrders(){
  $("todayOrdersTable").innerHTML=`<thead><tr><th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th><th>Pembatalan</th></tr></thead><tbody>${desktopRows(list,"Belum ada pesanan lainnya hari ini")}</tbody>`;
  $("todayOrdersMobile").innerHTML=mobileCards(list,"Belum ada pesanan lainnya hari ini");
 
+
+ const bal=balances();
+ $("heldOrdersTable").innerHTML=`<thead><tr><th>Jam</th><th>Siswa</th><th>Pesanan</th><th>Status / Tunggakan</th><th class="money">Total Pesanan</th><th>Aksi</th></tr></thead><tbody>${
+ held.map(o=>{const s=bal.find(x=>x.id===o.student_id),debt=Math.max(0,s?.balance||0);return `<tr>
+ <td><b>${new Date(o.created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}</b></td>
+ <td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td>
+ <td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td>
+ <td><span class="hold-badge">⏸️ TER-HOLD</span><div class="muted">Tunggakan: <b>${rp(debt)}</b></div></td>
+ <td class="money">${rp(orderTotal(o))}</td>
+ <td><button class="btn small hold-pay-btn" data-hold-pay="${o.id}">Bayar Sekarang</button></td></tr>`}).join("")||'<tr><td colspan="6" class="empty">Tidak ada pesanan ter-hold hari ini</td></tr>'
+ }</tbody>`;
+
+ $("heldOrdersMobile").innerHTML=held.map(o=>{const s=bal.find(x=>x.id===o.student_id),debt=Math.max(0,s?.balance||0);return `<div class="today-card hold-section">
+ <div class="today-card-head"><div><div class="student-name">${esc(o.students?.name||"-")}</div><div class="muted">${esc(o.students?.class_name||"")}</div></div><span class="hold-badge">⏸️ TER-HOLD</span></div>
+ <div class="items">${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</div>
+ <div class="row"><span class="muted">Total pesanan</span><b>${rp(orderTotal(o))}</b></div>
+ <div class="row"><span class="muted">Tunggakan</span><b class="negative">${rp(debt)}</b></div>
+ <button class="btn hold-pay-btn" data-hold-pay="${o.id}" style="margin-top:10px">Bayar Sekarang</button></div>`}).join("")||'<div class="empty">Tidak ada pesanan ter-hold hari ini</div>';
+
+ document.querySelectorAll("[data-hold-pay]").forEach(btn=>btn.onclick=()=>{
+   const o=orders.find(x=>x.id===btn.dataset.holdPay); if(!o)return;
+   const s=bal.find(x=>x.id===o.student_id),debt=Math.max(0,s?.balance||0);
+   billPaymentTargetId=o.student_id;
+   $("billPaymentSummary").innerHTML=`<span class="hold-badge">⏸️ PESANAN TER-HOLD</span><br><br><b>${esc(o.students?.name||"-")}</b> • ${esc(o.students?.class_name||"")}<br><b class="negative">Total tunggakan: ${rp(debt)}</b>`;
+   $("billPaymentDate").value=today;$("billPaymentAmount").value=debt;$("billPaymentMethod").value="Tunai";$("billPaymentNote").value="Pembayaran dari Pesanan Ter-Hold";$("billPaymentModal").classList.remove("hidden");
+ });
+
  document.querySelectorAll("[data-mobile-status]").forEach(btn=>{
    btn.onclick=async()=>{
      if(!["admin","approver"].includes(profile?.role)){alert("Anda tidak memiliki izin mengubah status pesanan.");return}
      const id=btn.dataset.mobileStatus,newStatus=btn.dataset.nextStatus,order=orders.find(o=>o.id===id);
-     if(!order||order.progress_status===newStatus)return;
+     if(!order||order.is_hold||order.progress_status===newStatus)return;
      const warning=newStatus==="completed"
        ?"Tandai pesanan sebagai Selesai? Pesanan akan masuk Rekap Mingguan dan tagihan siswa."
        :"Kembalikan menjadi Sementara Dibuat? Pesanan akan keluar sementara dari Rekap Mingguan dan tagihan siswa.";
      if(!confirm(warning))return;
      document.querySelectorAll(`[data-mobile-status="${id}"]`).forEach(x=>x.disabled=true);
-     const {data,error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",id).in("status",["active","cancel_rejected"]).select("id,progress_status,status").maybeSingle();
+     const {data,error}=await sb.from("orders").update({progress_status:newStatus}).eq("id",id).eq("is_hold",false).in("status",["active","cancel_rejected"]).select("id,progress_status,status").maybeSingle();
      if(error){alert("Gagal mengubah status: "+error.message);await loadData();renderAll();return}
      if(!data){alert("Status tidak berubah. Pesanan mungkin sedang menunggu approval pembatalan atau sudah dibatalkan.");await loadData();renderAll();return}
      await loadData();renderAll();
@@ -884,7 +938,7 @@ $("todayStatusFilter").onchange=renderTodayOrders;
 
 function renderOrderHistory(){
  const q=$("orderHistorySearch").value.toLowerCase().trim();let list=orders.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q)).slice(0,100);
- $("orderHistoryTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status</th><th>Alasan/Audit</th><th class="money">Total</th><th></th></tr></thead><tbody>${list.map(o=>{let audit="-";if(o.cancel_reason){audit=`<b>${esc(o.cancel_reason)}</b>${o.cancel_note?`<div>${esc(o.cancel_note)}</div>`:""}<div class="muted">Pengaju: ${esc(profName(o.cancel_requested_by))}</div>${o.cancel_decided_by?`<div class="muted">Keputusan: ${esc(profName(o.cancel_decided_by))}</div>`:""}`};const action=(profile?.role==="admin"&&(o.status==="active"||o.status==="cancel_rejected"))?`<button class="btn small danger" data-cancel="${o.id}">Ajukan Batal</button>`:(profile?.role==="approver"&&(o.status==="active"||o.status==="cancel_rejected")?`<span class="muted">Admin yang mengajukan</span>`:"");return `<tr><td>${o.order_date}</td><td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}</td><td>${statusBadge(o)}<div style="margin-top:4px">${o.status==="active"?(o.progress_status==="completed"?'<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>':'<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>'):""}</div></td><td>${audit}</td><td class="money">${rp(orderTotal(o))}</td><td>${action}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Belum ada pesanan</td></tr>'}</tbody>`;
+ $("orderHistoryTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status</th><th>Alasan/Audit</th><th class="money">Total</th><th></th></tr></thead><tbody>${list.map(o=>{let audit="-";if(o.cancel_reason){audit=`<b>${esc(o.cancel_reason)}</b>${o.cancel_note?`<div>${esc(o.cancel_note)}</div>`:""}<div class="muted">Pengaju: ${esc(profName(o.cancel_requested_by))}</div>${o.cancel_decided_by?`<div class="muted">Keputusan: ${esc(profName(o.cancel_decided_by))}</div>`:""}`};const action=(profile?.role==="admin"&&(o.status==="active"||o.status==="cancel_rejected"))?`<button class="btn small danger" data-cancel="${o.id}">Ajukan Batal</button>`:(profile?.role==="approver"&&(o.status==="active"||o.status==="cancel_rejected")?`<span class="muted">Admin yang mengajukan</span>`:"");return `<tr><td>${o.order_date}</td><td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${statusBadge(o)}<div style="margin-top:4px">${o.status==="active"?(o.progress_status==="completed"?'<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>':'<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>'):""}</div></td><td>${audit}</td><td class="money">${rp(orderTotal(o))}</td><td>${action}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Belum ada pesanan</td></tr>'}</tbody>`;
  document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>openCancel(b.dataset.cancel))
 }
 $("orderHistorySearch").oninput=renderOrderHistory;
@@ -1041,7 +1095,7 @@ $("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;$("bill
 
 $("closeBillPayment").onclick=()=>$("billPaymentModal").classList.add("hidden");
 $("saveBillPayment").onclick=async()=>{
- if(profile?.role!=="approver")return alert("Hanya Approver atau Master yang dapat mencatat pembayaran dari menu Tagihan.");
+ if(!["admin","approver"].includes(profile?.role))return alert("Anda tidak memiliki izin mencatat pembayaran.");
  if(!billPaymentTargetId)return alert("Pilih siswa.");
  const amount=Number($("billPaymentAmount").value);
  if(!(amount>0))return alert("Isi nominal pembayaran.");
