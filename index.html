@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="/icon-192.png">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f7f8fb;--card:#fff;--text:#161923;--muted:#6b7280;--line:#e6e8ed;--brand:#ff4770;--soft:#fff0f4;--green:#06875f;--red:#d61f4b;--amber:#b45309;--radius:16px;--shadow:0 8px 28px rgba(20,24,35,.06)}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
@@ -526,6 +527,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   <div class="field" style="margin:0;min-width:190px"><label>Pilih Pekan</label><input id="billWeekDate" type="date"></div>
   <input id="billSearch" placeholder="Cari siswa" style="max-width:300px">
   <select id="billFilter" style="max-width:190px"><option value="all">Semua Saldo Aktif</option><option value="unpaid">Belum Lunas</option><option value="deposit">Deposit</option></select>
+  <button id="downloadBillsExcel" class="btn primary">📥 Download Excel</button>
 </div>
 <div id="billWeekLabel" class="muted" style="margin-top:8px"></div>
 <div class="muted" style="margin-top:4px">Tagihan hanya tampil pada pekan saat pesanan terjadi. Hanya deposit yang dibawa ke pekan berikutnya sampai terpakai.</div>
@@ -930,8 +932,8 @@ function renderTodayOrders(){
    };
  });
 
- document.querySelectorAll("[data-today-cancel]").forEach(btn=>btn.onclick=()=>openCancelModal(btn.dataset.todayCancel));
- document.querySelectorAll("[data-today-cancel-mobile]").forEach(btn=>btn.onclick=()=>openCancelModal(btn.dataset.todayCancelMobile));
+ document.querySelectorAll("[data-today-cancel]").forEach(btn=>btn.onclick=()=>openCancel(btn.dataset.todayCancel));
+ document.querySelectorAll("[data-today-cancel-mobile]").forEach(btn=>btn.onclick=()=>openCancel(btn.dataset.todayCancelMobile));
 }
 $("todaySearch").oninput=renderTodayOrders;
 $("todayStatusFilter").onchange=renderTodayOrders;
@@ -1091,6 +1093,68 @@ function renderBills(){
    $("billPaymentModal").classList.remove("hidden");
  });
 }
+
+function isoWeekNumber(dateString){
+ const d=new Date(dateString+"T00:00:00");
+ const utc=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+ const day=utc.getUTCDay()||7;
+ utc.setUTCDate(utc.getUTCDate()+4-day);
+ const yearStart=new Date(Date.UTC(utc.getUTCFullYear(),0,1));
+ return Math.ceil((((utc-yearStart)/86400000)+1)/7);
+}
+
+function downloadBillsExcel(){
+ if(typeof XLSX==="undefined"){
+   alert("Fitur Excel belum termuat. Pastikan perangkat terhubung ke internet lalu coba lagi.");
+   return;
+ }
+
+ const {rows,weekStart,weekEnd}=weeklyBillRows();
+ const weekNo=isoWeekNumber(weekStart);
+
+ // Hanya tagihan yang memang muncul pada pekan terpilih.
+ // Deposit tidak menjadi baris tersendiri karena format rekap hanya meminta Nominal Tagihan.
+ const billRows=rows
+   .filter(x=>x.weekBill>0)
+   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id")||(a.name||"").localeCompare(b.name||"","id"));
+
+ if(!billRows.length){
+   alert("Tidak ada tagihan pada pekan yang dipilih.");
+   return;
+ }
+
+ const fmtDate=ds=>new Date(ds+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
+ const title=`REKAP TAGIHAN PEKAN KE-${weekNo}`;
+ const period=`Periode: ${fmtDate(weekStart)} - ${fmtDate(weekEnd)}`;
+
+ const aoa=[
+   [title],
+   [period],
+   [],
+   ["Nama Siswa","Kelas","Nominal Tagihan"],
+   ...billRows.map(x=>[x.name,x.class_name,Number(x.weekBill)])
+ ];
+
+ const ws=XLSX.utils.aoa_to_sheet(aoa);
+ ws["!merges"]=[
+   {s:{r:0,c:0},e:{r:0,c:2}},
+   {s:{r:1,c:0},e:{r:1,c:2}}
+ ];
+ ws["!cols"]=[{wch:32},{wch:16},{wch:20}];
+
+ // Currency formatting
+ for(let r=4;r<4+billRows.length;r++){
+   const cell=ws[XLSX.utils.encode_cell({r:r,c:2})];
+   if(cell) cell.z='"Rp"#,##0';
+ }
+
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,`Tagihan Pekan ${weekNo}`);
+ XLSX.writeFile(wb,`Rekap-Tagihan-Pekan-${weekNo}_${weekStart}_${weekEnd}.xlsx`);
+}
+
+$("downloadBillsExcel").onclick=downloadBillsExcel;
+
 $("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;$("billWeekDate").onchange=renderBills;
 
 $("closeBillPayment").onclick=()=>$("billPaymentModal").classList.add("hidden");
