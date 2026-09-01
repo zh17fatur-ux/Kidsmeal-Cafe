@@ -393,6 +393,17 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
 .hold-pay-btn{background:#7c3aed!important;border-color:#7c3aed!important;color:#fff!important;font-weight:900}
 #heldOrdersMobile{display:none}
 @media(max-width:650px){#heldOrdersTable{display:none}#heldOrdersMobile{display:block}.hold-pay-btn{width:100%;min-height:46px}}
+
+/* v33 input-order overdue guard */
+#orderDebtModal .modal{max-width:520px}
+.order-debt-list{margin:12px 0;display:grid;gap:8px}
+.order-debt-row{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fafafa}
+.order-debt-row b{white-space:nowrap}
+.order-debt-blocked{background:#fff1f2;border-color:#fecdd3;color:#9f1239}
+.order-debt-warning{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.order-debt-confirm{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #fbbf24;border-radius:10px;background:#fffbeb;margin:12px 0}
+.order-debt-confirm input{width:20px;height:20px;margin-top:2px}
+
 </style>
 </head>
 <body>
@@ -612,6 +623,21 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   </main>
 </section>
 
+
+<div id="orderDebtModal" class="modalbg hidden"><div class="modal">
+  <div class="flex"><h3 id="orderDebtTitle" style="margin:0">Peringatan Tagihan</h3><button id="closeOrderDebt" class="btn small" style="margin-left:auto">✕</button></div>
+  <div id="orderDebtMessage" class="notice" style="margin:12px 0"></div>
+  <div id="orderDebtList" class="order-debt-list"></div>
+  <label id="orderDebtConfirmWrap" class="order-debt-confirm hidden">
+    <input id="orderDebtConfirm" type="checkbox">
+    <span><b>Tetap proses pesanan</b><br><span class="muted">Saya memahami siswa masih mempunyai tagihan maksimal 2 pekan ke belakang.</span></span>
+  </label>
+  <div class="flex">
+    <button id="orderDebtPay" class="btn">💵 Bayar Tagihan</button>
+    <button id="orderDebtProceed" class="btn primary grow hidden" disabled>Proses Pesanan</button>
+  </div>
+</div></div>
+
 <div id="billPaymentModal" class="modalbg hidden"><div class="modal">
   <div class="flex"><h3 style="margin:0">Catat Pembayaran Tagihan</h3><button id="closeBillPayment" class="btn small" style="margin-left:auto">✕</button></div>
   <div id="billPaymentSummary" class="bill-payment-summary"></div>
@@ -771,16 +797,105 @@ function renderCart(){
  document.querySelectorAll("[data-qplus]").forEach(b=>b.onclick=()=>{cart[b.dataset.qplus]++;renderCart();renderMenusForOrder()});
  $("cartTotal").textContent=rp(x.reduce((a,[id,q])=>a+Number(menus.find(m=>m.id===id).price)*q,0))
 }
-$("saveOrder").onclick=async()=>{
+let pendingOrderDebtWeeks=[];
+
+function fmtShortDate(ds){
+ return new Date(ds+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"});
+}
+function orderDebtTotal(){return pendingOrderDebtWeeks.reduce((a,x)=>a+Number(x.amount_due||0),0)}
+function closeOrderDebtModal(){
+ $("orderDebtModal").classList.add("hidden");
+ $("orderDebtConfirm").checked=false;
+ $("orderDebtProceed").disabled=true;
+}
+function currentWeekStartDate(){
+ const d=new Date(today+"T00:00:00");
+ const day=d.getDay()||7;
+ d.setDate(d.getDate()-day+1);
+ return d;
+}
+function isDebtOlderThanTwoWeeks(w){
+ const currentStart=currentWeekStartDate();
+ const threshold=new Date(currentStart);
+ threshold.setDate(threshold.getDate()-14);
+ const debtStart=new Date(w.week_start+"T00:00:00");
+ return debtStart < threshold;
+}
+function showOrderDebtModal(weeks){
+ pendingOrderDebtWeeks=weeks||[];
+ const blocked=pendingOrderDebtWeeks.some(isDebtOlderThanTwoWeeks);
+ const s=students.find(x=>x.id===selectedStudentId);
+ $("orderDebtTitle").textContent=blocked?"⛔ Pesanan Tidak Dapat Diproses":"⚠️ Konfirmasi Tunggakan";
+ $("orderDebtMessage").className="notice "+(blocked?"order-debt-blocked":"order-debt-warning");
+ $("orderDebtMessage").innerHTML=blocked
+   ? `<b>${esc(s?.name||"Siswa")}</b> mempunyai tagihan yang sudah <b>lebih dari 2 pekan ke belakang</b>. Pesanan baru tidak dapat diproses sampai tunggakan lama tersebut dibayar. Tagihan maksimal yang diperbolehkan adalah sampai 2 pekan ke belakang.`
+   : `<b>${esc(s?.name||"Siswa")}</b> masih mempunyai tagihan ${pendingOrderDebtWeeks.length===1?"pada 1 pekan":"pada 2 pekan"}. Pesanan dapat dilanjutkan setelah konfirmasi.`;
+ $("orderDebtList").innerHTML=pendingOrderDebtWeeks.map(w=>`<div class="order-debt-row"><span><b>Pekan ke-${Number(w.week_no)}</b><br><span class="muted">${fmtShortDate(w.week_start)} – ${fmtShortDate(w.week_end)}</span></span><b>${rp(Number(w.amount_due))}</b></div>`).join("");
+ $("orderDebtConfirmWrap").classList.toggle("hidden",blocked);
+ $("orderDebtProceed").classList.toggle("hidden",blocked);
+ $("orderDebtProceed").disabled=true;
+ $("orderDebtConfirm").checked=false;
+ $("orderDebtPay").textContent=`💵 Bayar Tagihan (${rp(orderDebtTotal())})`;
+ $("orderDebtModal").classList.remove("hidden");
+}
+
+async function getStudentUnpaidWeeks(){
+ const {data,error}=await sb.rpc("student_unpaid_weeks",{p_student_id:selectedStudentId,p_as_of:$("orderDate").value||today});
+ if(error)throw error;
+ return data||[];
+}
+
+async function saveOrderNow(){
+ const items=Object.entries(cart).filter(([_,q])=>q>0);
  if(!selectedStudentId)return alert("Pilih siswa.");
- const items=Object.entries(cart).filter(([_,q])=>q>0);if(!items.length)return alert("Pilih menu.");
+ if(!items.length)return alert("Pilih menu.");
  $("saveOrder").disabled=true;
  const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",is_breakfast:$("isBreakfastOrder").checked,order_note:$("orderNote").value.trim()||null,created_by:session.user.id}).select().single();
  if(error){$("saveOrder").disabled=false;return alert(error.message)}
  const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
  const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
- if(e2)return alert(e2.message);cart={};selectedStudentId=null;$("isBreakfastOrder").checked=false;$("orderNote").value="";$("selectedStudent").textContent="Belum ada siswa dipilih.";await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.")
+ if(e2)return alert(e2.message);
+ cart={};selectedStudentId=null;pendingOrderDebtWeeks=[];$("isBreakfastOrder").checked=false;$("orderNote").value="";$("selectedStudent").textContent="Belum ada siswa dipilih.";closeOrderDebtModal();await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.");
 }
+
+$("saveOrder").onclick=async()=>{
+ if(!selectedStudentId)return alert("Pilih siswa.");
+ const items=Object.entries(cart).filter(([_,q])=>q>0);if(!items.length)return alert("Pilih menu.");
+ $("saveOrder").disabled=true;
+ try{
+   const weeks=await getStudentUnpaidWeeks();
+   $("saveOrder").disabled=false;
+   if(weeks.length){showOrderDebtModal(weeks);return;}
+   await saveOrderNow();
+ }catch(e){
+   $("saveOrder").disabled=false;
+   console.error(e);alert("Gagal mengecek tagihan siswa: "+(e?.message||e));
+ }
+};
+
+$("closeOrderDebt").onclick=closeOrderDebtModal;
+$("orderDebtConfirm").onchange=()=>{$("orderDebtProceed").disabled=!$("orderDebtConfirm").checked};
+$("orderDebtProceed").onclick=async()=>{
+ if(!$("orderDebtConfirm").checked)return;
+ // Recheck so a payment or data change made while the popup was open is respected.
+ try{
+   const weeks=await getStudentUnpaidWeeks();
+   if(weeks.some(isDebtOlderThanTwoWeeks)){showOrderDebtModal(weeks);return;}
+   await saveOrderNow();
+ }catch(e){alert("Gagal mengecek ulang tagihan: "+(e?.message||e));}
+};
+$("orderDebtPay").onclick=()=>{
+ if(!selectedStudentId||!pendingOrderDebtWeeks.length)return;
+ const s=students.find(x=>x.id===selectedStudentId);
+ billPaymentTargetId=selectedStudentId;
+ $("billPaymentSummary").innerHTML=`<b>${esc(s?.name||"-")}</b> • ${esc(s?.class_name||"")}<br>${pendingOrderDebtWeeks.map(w=>`Pekan ke-${Number(w.week_no)}: <b>${rp(Number(w.amount_due))}</b>`).join("<br>")}<br><br><b class="negative">Total tagihan belum dibayar: ${rp(orderDebtTotal())}</b>`;
+ $("billPaymentDate").value=today;
+ $("billPaymentAmount").value=orderDebtTotal();
+ $("billPaymentMethod").value="Tunai";
+ $("billPaymentNote").value="Pembayaran dari peringatan Input Pesanan";
+ closeOrderDebtModal();
+ $("billPaymentModal").classList.remove("hidden");
+};
 
 
 function effectiveTodayStatus(o){
