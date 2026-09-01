@@ -734,6 +734,23 @@ function orderNoteHtml(o){
 const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(b.dataset.page+"Page").classList.remove("hidden");$("pageTitle").textContent=pages[b.dataset.page][0];$("pageSub").textContent=pages[b.dataset.page][1];renderAll()});
 
+function localDateFromTimestamp(ts){
+ const d=new Date(ts);
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+ return `${y}-${m}-${day}`;
+}
+function dashboardStatusControl(o){
+ const canFinishPastOrder=["admin","approver"].includes(profile?.role)
+   && !o.is_hold
+   && ["active","cancel_rejected"].includes(o.status)
+   && o.progress_status==="preparing"
+   && o.order_date<today
+   && localDateFromTimestamp(o.created_at)===today;
+ if(canFinishPastOrder){
+   return `${todayStatusBadge(o)}<div style="margin-top:7px"><button class="btn small primary" data-dashboard-complete="${o.id}">✓ Tandai Selesai</button></div>`;
+ }
+ return todayStatusBadge(o);
+}
 function renderDashboard(){
  const b=balances(),debt=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
  const todayOrders=orders.filter(o=>o.order_date===today&&billableOrder(o));
@@ -743,7 +760,30 @@ function renderDashboard(){
  <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(debt.reduce((a,x)=>a+x.balance,0))}</div></div>
  <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>
  </div>
- <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Sementara Dibuat belum menjadi tagihan. Selesai sudah masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${todayStatusBadge(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
+ <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Pesanan tanggal sebelumnya yang baru diinput hari ini dapat ditandai Selesai oleh Admin/Approver dari Dashboard. Sementara Dibuat belum menjadi tagihan; Selesai masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${dashboardStatusControl(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
+
+ document.querySelectorAll("[data-dashboard-complete]").forEach(btn=>{
+   btn.onclick=async()=>{
+     const id=btn.dataset.dashboardComplete;
+     const o=orders.find(x=>x.id===id);
+     if(!o)return;
+     const name=o.students?.name||"siswa";
+     if(!confirm(`Apakah yakin menginput pesanan ini?\n\n${name} • ${o.order_date}\nStatus akan diubah menjadi Selesai dan masuk ke tagihan serta Rekap Mingguan.`))return;
+     btn.disabled=true;
+     const {data,error}=await sb.from("orders")
+       .update({progress_status:"completed"})
+       .eq("id",id)
+       .eq("is_hold",false)
+       .eq("progress_status","preparing")
+       .in("status",["active","cancel_rejected"])
+       .select("id,progress_status")
+       .maybeSingle();
+     if(error){alert("Gagal mengubah status: "+error.message);btn.disabled=false;return}
+     if(!data){alert("Status tidak dapat diubah. Cek apakah pesanan sedang ter-hold, dibatalkan, atau statusnya sudah berubah.");await loadData();renderAll();return}
+     await loadData();
+     renderAll();
+   };
+ });
 }
 function renderStudentSearch(){
  const q=$("studentSearch").value.toLowerCase().trim(),list=students.filter(s=>s.active).filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q)).slice(0,20);
