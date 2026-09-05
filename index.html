@@ -1490,37 +1490,113 @@ function downloadBillsExcel(){
 }
 
 
+
+function mondayOfDate(dateString){
+ const d=new Date(dateString+"T00:00:00");
+ const day=d.getDay()||7;
+ d.setDate(d.getDate()-day+1);
+ return d;
+}
+
+function formatWaPeriod(start,end){
+ const s=new Date(start+"T00:00:00");
+ const e=new Date(end+"T00:00:00");
+ const optsSame={day:"numeric"};
+ const monthYear={month:"long",year:"numeric"};
+ if(s.getMonth()===e.getMonth()&&s.getFullYear()===e.getFullYear()){
+   return `${s.toLocaleDateString("id-ID",optsSame)}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
+ }
+ return `${s.toLocaleDateString("id-ID",{day:"numeric",month:"long"})}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
+}
+
+function allOutstandingWeeksForWhatsApp(){
+ // Kumpulkan semua pekan yang punya pesanan billable.
+ const weekKeys=new Set(
+   orders
+     .filter(o=>billableOrder(o))
+     .map(o=>iso(mondayOfDate(o.order_date)))
+ );
+
+ const groups=[];
+
+ [...weekKeys].sort().forEach(weekStart=>{
+   const base=new Date(weekStart+"T00:00:00");
+   const end=new Date(base); end.setDate(end.getDate()+6);
+   const weekEnd=iso(end);
+
+   const rows=students.map(s=>{
+     const studentOrders=orders
+       .filter(o=>o.student_id===s.id&&billableOrder(o))
+       .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
+
+     const totalPayments=payments
+       .filter(p=>p.student_id===s.id&&p.payment_date<=today)
+       .reduce((a,p)=>a+Number(p.amount),0);
+
+     const priorCharges=studentOrders
+       .filter(o=>o.order_date<weekStart)
+       .reduce((a,o)=>a+orderTotal(o),0);
+
+     const weekCharges=studentOrders
+       .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd)
+       .reduce((a,o)=>a+orderTotal(o),0);
+
+     if(weekCharges<=0)return null;
+
+     // FIFO: pembayaran menutup tagihan lama dulu, lalu tagihan pekan ini.
+     const availableForWeek=Math.max(0,totalPayments-priorCharges);
+     const paidToWeek=Math.min(weekCharges,availableForWeek);
+     const weekOutstanding=Math.max(0,weekCharges-paidToWeek);
+
+     if(weekOutstanding<=0)return null;
+
+     return {
+       name:s.name,
+       class_name:s.class_name,
+       amount:weekOutstanding
+     };
+   }).filter(Boolean);
+
+   if(rows.length){
+     rows.sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
+     groups.push({weekStart,weekEnd,rows});
+   }
+ });
+
+ return groups;
+}
+
 function shareBillsWhatsApp(){
- const {rows,weekStart,weekEnd}=weeklyBillRows();
- const weekNo=isoWeekNumber(weekStart);
+ const groups=allOutstandingWeeksForWhatsApp();
 
- const billRows=rows
-   .filter(x=>x.weekBill>0)
-   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id")||(a.name||"").localeCompare(b.name||"","id"));
-
- if(!billRows.length){
-   alert("Tidak ada tagihan aktif pada pekan yang dipilih.");
+ if(!groups.length){
+   alert("Tidak ada tagihan aktif yang belum lunas.");
    return;
  }
 
- const fmtDate=ds=>new Date(ds+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
- const total=billRows.reduce((a,x)=>a+Number(x.weekBill||0),0);
+ const lines=["*REKAP TAGIHAN KIDSMEAL*",""];
 
- const lines=[
-   `*TAGIHAN KIDSMEAL PEKAN KE-${weekNo}*`,
-   `Periode ${fmtDate(weekStart)} - ${fmtDate(weekEnd)}`,
-   "",
-   ...billRows.map((x,i)=>`${i+1}. ${x.name} — ${x.class_name} — *${rp(Number(x.weekBill))}*`),
-   "",
-   `*Total Tagihan: ${rp(total)}*`
- ];
+ groups.forEach((g,idx)=>{
+   lines.push(`*Tagihan periode ${formatWaPeriod(g.weekStart,g.weekEnd)}*`);
+   g.rows.forEach((x,i)=>{
+     lines.push(`${i+1}. ${x.name} — ${x.class_name} — *${rp(Number(x.amount))}*`);
+   });
+   const subtotal=g.rows.reduce((a,x)=>a+Number(x.amount||0),0);
+   lines.push(`*Subtotal: ${rp(subtotal)}*`);
+   if(idx<groups.length-1)lines.push("");
+ });
+
+ const grand=groups.flatMap(g=>g.rows).reduce((a,x)=>a+Number(x.amount||0),0);
+ lines.push("");
+ lines.push(`*Total Seluruh Tagihan: ${rp(grand)}*`);
 
  const message=lines.join("\n");
  const url=`https://wa.me/?text=${encodeURIComponent(message)}`;
  const w=window.open(url,"_blank");
- if(!w) window.location.href=url;
+ if(!w)window.location.href=url;
 }
 $("shareBillsWhatsApp").onclick=shareBillsWhatsApp;
+
 
 $("downloadBillsExcel").onclick=downloadBillsExcel;
 
