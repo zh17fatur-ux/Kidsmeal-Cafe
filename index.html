@@ -1566,6 +1566,20 @@ function allOutstandingWeeksForWhatsApp(){
  return groups;
 }
 
+
+function compactWaAmount(value){
+ const n=Number(value||0);
+ if(n>=1000000){
+   const m=n/1000000;
+   return `${Number.isInteger(m)?m:m.toFixed(1).replace(".",",")}jt`;
+ }
+ if(n>=1000){
+   const k=n/1000;
+   return `${Number.isInteger(k)?k:k.toFixed(1).replace(".",",")}k`;
+ }
+ return String(Math.round(n));
+}
+
 function shareBillsWhatsApp(){
  const groups=allOutstandingWeeksForWhatsApp();
 
@@ -1579,16 +1593,16 @@ function shareBillsWhatsApp(){
  groups.forEach((g,idx)=>{
    lines.push(`*Tagihan periode ${formatWaPeriod(g.weekStart,g.weekEnd)}*`);
    g.rows.forEach((x,i)=>{
-     lines.push(`${i+1}. ${x.name} — ${x.class_name} — *${rp(Number(x.amount))}*`);
+     lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.amount)}*`);
    });
    const subtotal=g.rows.reduce((a,x)=>a+Number(x.amount||0),0);
-   lines.push(`*Subtotal: ${rp(subtotal)}*`);
+   lines.push(`*Subtotal: ${compactWaAmount(subtotal)}*`);
    if(idx<groups.length-1)lines.push("");
  });
 
  const grand=groups.flatMap(g=>g.rows).reduce((a,x)=>a+Number(x.amount||0),0);
  lines.push("");
- lines.push(`*Total Seluruh Tagihan: ${rp(grand)}*`);
+ lines.push(`*Total Seluruh Tagihan: ${compactWaAmount(grand)}*`);
 
  const message=lines.join("\n");
  const url=`https://wa.me/?text=${encodeURIComponent(message)}`;
