@@ -542,7 +542,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   <button id="shareBillsWhatsApp" class="btn">📲 Bagikan ke WhatsApp</button>
 </div>
 <div id="billWeekLabel" class="muted" style="margin-top:8px"></div>
-<div class="muted" style="margin-top:4px">Tagihan hanya tampil pada pekan saat pesanan terjadi. Hanya deposit yang dibawa ke pekan berikutnya sampai terpakai.</div>
+<div class="muted" style="margin-top:4px">Tagihan Awal mengambil sisa tagihan pekan sebelumnya. Tagihan/Deposit Akhir otomatis menjadi dasar saldo pekan berikutnya.</div>
         <div class="tablewrap"><table id="billsTable"></table></div>
       </div>
     </section>
@@ -1131,13 +1131,11 @@ function weeklyBillRows(){
  const weekEnd=iso(endDate);
 
  const rows=students.map(s=>{
-   // v36: semua pembayaran siswa dialokasikan FIFO ke tagihan tertua terlebih dahulu.
-   // Tanggal pembayaran tidak menentukan pekan mana yang mendapat "deposit".
-   // Ini membuat pembayaran terlambat tetap melunasi tagihan pekan asalnya.
    const studentOrders=orders
      .filter(o=>o.student_id===s.id&&billableOrder(o))
      .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
 
+   // Semua pembayaran sampai hari ini tetap dialokasikan FIFO ke tagihan tertua.
    const totalPayments=payments
      .filter(p=>p.student_id===s.id&&p.payment_date<=today)
      .reduce((a,p)=>a+Number(p.amount),0);
@@ -1146,46 +1144,41 @@ function weeklyBillRows(){
      .filter(o=>o.order_date<weekStart)
      .reduce((a,o)=>a+orderTotal(o),0);
 
-   const weekOrders=studentOrders
-     .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd);
+   const weekCharges=studentOrders
+     .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd)
+     .reduce((a,o)=>a+orderTotal(o),0);
 
-   const weekCharges=weekOrders.reduce((a,o)=>a+orderTotal(o),0);
+   // Pembayaran pertama-tama menutup seluruh tagihan sebelum pekan terpilih.
+   const paidToPrior=Math.min(totalPayments,priorCharges);
+   const openingDebt=Math.max(0,priorCharges-paidToPrior);
 
+   // Sisa pembayaran setelah tagihan lama lunas dapat dipakai ke pekan terpilih.
+   const paymentAfterPrior=Math.max(0,totalPayments-priorCharges);
+   const allocatedToWeek=Math.min(weekCharges,paymentAfterPrior);
+
+   // Jika setelah seluruh tagihan sampai pekan terpilih masih ada uang lebih,
+   // uang tersebut menjadi deposit akhir/credit untuk pekan selanjutnya.
    const chargesThroughWeek=priorCharges+weekCharges;
+   const depositThroughWeek=Math.max(0,totalPayments-chargesThroughWeek);
 
-   // Sisa uang setelah melunasi seluruh tagihan sebelum pekan terpilih.
-   // Angka ini bisa berasal dari deposit lama ATAU pembayaran yang dilakukan belakangan;
-   // semuanya tetap dialokasikan ke tagihan tertua terlebih dahulu.
-   const availableForWeek=Math.max(0,totalPayments-priorCharges);
-   const allocatedToWeek=Math.min(weekCharges,availableForWeek);
+   // Deposit awal adalah kredit yang memang sudah tersedia setelah melunasi
+   // seluruh tagihan sebelum pekan ini.
+   const openingDeposit=Math.max(0,totalPayments-priorCharges);
 
-   // Saldo pekan terpilih setelah seluruh pembayaran yang ada saat ini dialokasikan FIFO.
-   const weekBill=Math.max(0,weekCharges-allocatedToWeek);
-
-   // Deposit hanya benar-benar ada jika total pembayaran melebihi SELURUH tagihan siswa,
-   // bukan sekadar karena pembayaran dilakukan pada pekan yang berbeda.
-   const allCharges=studentOrders.reduce((a,o)=>a+orderTotal(o),0);
-   const trueDeposit=Math.max(0,totalPayments-allCharges);
-
-   // Deposit awal historis: kelebihan pembayaran yang sudah ada sebelum charge pekan ini.
-   // Ditampilkan hanya bila memang masih menjadi deposit nyata setelah semua tagihan.
-   const openingDeposit=weekCharges>0
-     ? Math.min(trueDeposit,Math.max(0,totalPayments-priorCharges))
-     : trueDeposit;
-
-   // "Pembayaran pekan ini" sekarang berarti pembayaran yang DIALOKASIKAN ke tagihan pekan ini,
-   // sehingga pembayaran 2 Sep dapat menutup tagihan 10-14 Agu tanpa menjadi deposit Sep.
-   const weekPayments=allocatedToWeek;
-
-   const closingDeposit=trueDeposit;
+   // Tagihan akhir sekarang TERHUBUNG: tagihan lama + pesanan pekan ini,
+   // dikurangi pembayaran yang sudah dialokasikan FIFO.
+   const closingNet=(priorCharges+weekCharges)-totalPayments;
+   const weekBill=Math.max(0,closingNet);
+   const closingDeposit=Math.max(0,-closingNet);
 
    return {
      id:s.id,
      name:s.name,
      class_name:s.class_name,
+     openingDebt,
      openingDeposit,
      weekCharges,
-     weekPayments,
+     weekPayments:allocatedToWeek,
      weekBill,
      closingDeposit,
      weekStart,
@@ -1200,11 +1193,9 @@ function renderBills(){
  const labelEnd=new Date(weekEnd+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
  $("billWeekLabel").innerHTML=`Periode tagihan: <b>${labelStart} – ${labelEnd}</b>`;
 
- // Baris muncul hanya jika:
- // 1) ada pesanan pada pekan ini, atau
- // 2) ada pembayaran yang dialokasikan ke tagihan pekan ini, atau
- // 3) ada deposit yang masih terbawa.
- const active=allRows.filter(x=>x.weekCharges>0||x.weekPayments>0||x.openingDeposit>0||x.closingDeposit>0);
+ // Baris muncul jika ada tagihan awal, pesanan pekan ini,
+ // pembayaran yang dialokasikan, atau deposit aktif.
+ const active=allRows.filter(x=>x.openingDebt>0||x.weekCharges>0||x.weekPayments>0||x.openingDeposit>0||x.closingDeposit>0||x.weekBill>0);
 
  const unpaid=active.filter(x=>x.weekBill>0);
  const deposit=active.filter(x=>x.closingDeposit>0);
@@ -1225,6 +1216,7 @@ function renderBills(){
  $("billsTable").innerHTML=`<thead><tr>
    <th>Siswa</th>
    <th>Kelas</th>
+   <th class="money">Tagihan Awal</th>
    <th class="money">Deposit Awal</th>
    <th class="money">Pesanan Pekan Ini</th>
    <th class="money">Pembayaran Dialokasikan</th>
@@ -1233,6 +1225,7 @@ function renderBills(){
  </tr></thead><tbody>${rows.map(x=>`<tr>
    <td><b>${esc(x.name)}</b></td>
    <td>${esc(x.class_name)}</td>
+   <td class="money negative">${x.openingDebt>0?rp(x.openingDebt):"-"}</td>
    <td class="money positive">${x.openingDeposit>0?rp(x.openingDeposit):"-"}</td>
    <td class="money">${x.weekCharges>0?rp(x.weekCharges):"-"}</td>
    <td class="money positive">${x.weekPayments>0?rp(x.weekPayments):"-"}</td>
@@ -1250,7 +1243,7 @@ function renderBills(){
        ? `<button class="btn small primary bill-pay-btn" data-bill-pay="${x.id}">Isi Pembayaran</button>`
        : `<span class="muted">${x.closingDeposit>0?"Deposit":"Lunas"}</span>`
    }</td>`:""}
- </tr>`).join("")||`<tr><td colspan="${canPay?7:6}" class="empty">Tidak ada tagihan atau deposit aktif pada pekan ini</td></tr>`}</tbody>`;
+ </tr>`).join("")||`<tr><td colspan="${canPay?8:7}" class="empty">Tidak ada tagihan atau deposit aktif pada pekan ini</td></tr>`}</tbody>`;
 
  document.querySelectorAll("[data-bill-pay]").forEach(btn=>btn.onclick=()=>{
    if(profile?.role!=="approver")return;
