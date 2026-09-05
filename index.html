@@ -539,6 +539,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   <input id="billSearch" placeholder="Cari siswa" style="max-width:300px">
   <select id="billFilter" style="max-width:190px"><option value="all">Semua Saldo Aktif</option><option value="unpaid">Belum Lunas</option><option value="deposit">Deposit</option></select>
   <button id="downloadBillsExcel" class="btn primary">📥 Download Excel</button>
+  <button id="shareBillsWhatsApp" class="btn">📲 Bagikan ke WhatsApp</button>
 </div>
 <div id="billWeekLabel" class="muted" style="margin-top:8px"></div>
 <div class="muted" style="margin-top:4px">Tagihan hanya tampil pada pekan saat pesanan terjadi. Hanya deposit yang dibawa ke pekan berikutnya sampai terpakai.</div>
@@ -1329,6 +1330,39 @@ function downloadBillsExcel(){
  XLSX.utils.book_append_sheet(wb,ws,`Tagihan Pekan ${weekNo}`);
  XLSX.writeFile(wb,`Rekap-Tagihan-Pekan-${weekNo}_${weekStart}_${weekEnd}.xlsx`);
 }
+
+
+function shareBillsWhatsApp(){
+ const {rows,weekStart,weekEnd}=weeklyBillRows();
+ const weekNo=isoWeekNumber(weekStart);
+
+ const billRows=rows
+   .filter(x=>x.weekBill>0)
+   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id")||(a.name||"").localeCompare(b.name||"","id"));
+
+ if(!billRows.length){
+   alert("Tidak ada tagihan aktif pada pekan yang dipilih.");
+   return;
+ }
+
+ const fmtDate=ds=>new Date(ds+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
+ const total=billRows.reduce((a,x)=>a+Number(x.weekBill||0),0);
+
+ const lines=[
+   `*TAGIHAN KIDSMEAL PEKAN KE-${weekNo}*`,
+   `Periode ${fmtDate(weekStart)} - ${fmtDate(weekEnd)}`,
+   "",
+   ...billRows.map((x,i)=>`${i+1}. ${x.name} — ${x.class_name} — *${rp(Number(x.weekBill))}*`),
+   "",
+   `*Total Tagihan: ${rp(total)}*`
+ ];
+
+ const message=lines.join("\n");
+ const url=`https://wa.me/?text=${encodeURIComponent(message)}`;
+ const w=window.open(url,"_blank");
+ if(!w) window.location.href=url;
+}
+$("shareBillsWhatsApp").onclick=shareBillsWhatsApp;
 
 $("downloadBillsExcel").onclick=downloadBillsExcel;
 
