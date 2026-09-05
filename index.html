@@ -433,6 +433,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
       <button data-page="orders" id="navOrders">🧾 <span>Input Pesanan</span></button>
       <button data-page="today" id="todayNav">📋 <span>Rekap Pesanan Hari Ini</span></button>
 <button data-page="weekly" id="navWeekly">📅 <span>Rekap Mingguan</span></button>
+      <button data-page="analytics" id="navAnalytics">📊 <span>Analisa Menu</span></button>
       <button data-page="bills" id="navBills">💳 <span>Tagihan</span></button>
       <button data-page="payments" id="navPayments">💵 <span>Pembayaran</span></button>
       <button data-page="approvals" id="navApprovals">✅ <span>Persetujuan Batal</span></button>
@@ -528,6 +529,47 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
       <div class="card">
         <div class="flex"><input id="weekDate" type="date" style="max-width:180px"><select id="weekClass" style="max-width:160px"></select></div>
         <div class="tablewrap"><table id="weeklyTable"></table></div>
+      </div>
+    </section>
+
+    <section id="analyticsPage" class="page hidden">
+      <div class="grid four" id="analyticsStats"></div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="flex" style="align-items:end">
+          <div class="field" style="margin:0;min-width:170px">
+            <label>Dari Tanggal</label>
+            <input id="analyticsStart" type="date">
+          </div>
+          <div class="field" style="margin:0;min-width:170px">
+            <label>Sampai Tanggal</label>
+            <input id="analyticsEnd" type="date">
+          </div>
+          <div class="field" style="margin:0;min-width:170px">
+            <label>Kelas</label>
+            <select id="analyticsClass"><option value="all">Semua Kelas</option></select>
+          </div>
+          <input id="analyticsSearch" placeholder="Cari nama menu" style="max-width:260px">
+        </div>
+        <div class="muted" style="margin-top:8px">Analisa hanya menghitung pesanan berstatus <b>Selesai</b> dan tidak dibatalkan.</div>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <div class="card">
+          <h3 style="margin-top:0">🏆 Ranking Menu Terlaris</h3>
+          <div class="muted" style="margin-bottom:10px">Diurutkan berdasarkan jumlah item terjual.</div>
+          <div id="analyticsRanking"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">💰 Ranking Omzet Menu</h3>
+          <div class="muted" style="margin-bottom:10px">Diurutkan berdasarkan omzet dari menu.</div>
+          <div id="analyticsRevenue"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3 style="margin-top:0">Detail Penjualan Menu</h3>
+        <div class="tablewrap"><table id="analyticsTable"></table></div>
       </div>
     </section>
 
@@ -732,7 +774,7 @@ function orderNoteHtml(o){
  const n=(o.order_note||"").trim();
  return n?`<div class="notice" style="margin-top:7px;padding:8px 10px;background:#f8fafc;border-color:#e2e8f0"><b>📝 Catatan:</b> ${esc(n)}</div>`:"";
 }
-const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
+const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],analytics:["Analisa Menu","Lihat menu terlaris, jumlah terjual, dan omzet"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(b.dataset.page+"Page").classList.remove("hidden");$("pageTitle").textContent=pages[b.dataset.page][0];$("pageSub").textContent=pages[b.dataset.page][1];renderAll()});
 
 function localDateFromTimestamp(ts){
@@ -1122,6 +1164,129 @@ function renderWeekly(){
  <tfoot><tr class="weekly-total-row"><td colspan="2">TOTAL PER HARI</td>${dailyTotals.map(t=>`<td class="money">${rp(t)}</td>`).join("")}<td class="money">${rp(grandTotal)}</td></tr></tfoot>`;
 }
 $("weekDate").onchange=renderWeekly;$("weekClass").onchange=renderWeekly;
+
+
+let analyticsInitialized=false;
+
+function initAnalyticsFilters(){
+ if(analyticsInitialized)return;
+ analyticsInitialized=true;
+
+ const now=new Date(today+"T00:00:00");
+ const first=new Date(now.getFullYear(),now.getMonth(),1);
+ $("analyticsStart").value=iso(first);
+ $("analyticsEnd").value=today;
+
+ ["analyticsStart","analyticsEnd","analyticsClass"].forEach(id=>{
+   $(id).onchange=renderMenuAnalytics;
+ });
+ $("analyticsSearch").oninput=renderMenuAnalytics;
+}
+
+function analyticsData(){
+ initAnalyticsFilters();
+
+ const start=$("analyticsStart").value||today;
+ const end=$("analyticsEnd").value||today;
+ const selectedClass=$("analyticsClass").value||"all";
+ const q=($("analyticsSearch").value||"").toLowerCase().trim();
+
+ // Keep class choices synced with active student data.
+ const classes=[...new Set(students.filter(s=>s.active).map(s=>s.class_name).filter(Boolean))]
+   .sort((a,b)=>a.localeCompare(b,"id",{numeric:true}));
+ const previous=$("analyticsClass").value||"all";
+ $("analyticsClass").innerHTML='<option value="all">Semua Kelas</option>'+classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+ if(previous==="all"||classes.includes(previous))$("analyticsClass").value=previous;
+
+ const map=new Map();
+
+ orders
+  .filter(o=>billableOrder(o)&&o.order_date>=start&&o.order_date<=end)
+  .filter(o=>selectedClass==="all"||(o.students?.class_name||"")===selectedClass)
+  .forEach(o=>{
+    (o.order_items||[]).forEach(i=>{
+      const key=(i.menu_name||"Menu").trim();
+      if(!map.has(key))map.set(key,{name:key,qty:0,revenue:0,orders:new Set(),students:new Set()});
+      const row=map.get(key);
+      row.qty+=Number(i.qty||0);
+      row.revenue+=Number(i.unit_price||0)*Number(i.qty||0);
+      row.orders.add(o.id);
+      if(o.student_id)row.students.add(o.student_id);
+    });
+  });
+
+ let rows=[...map.values()].map(x=>({
+   name:x.name,
+   qty:x.qty,
+   revenue:x.revenue,
+   orderCount:x.orders.size,
+   studentCount:x.students.size,
+   avg:x.qty?x.revenue/x.qty:0
+ }));
+
+ if(q)rows=rows.filter(x=>x.name.toLowerCase().includes(q));
+
+ return {rows,start,end,selectedClass};
+}
+
+function analyticsBarRows(rows,valueKey,formatValue){
+ if(!rows.length)return '<div class="empty">Belum ada data penjualan pada periode ini.</div>';
+ const max=Math.max(...rows.map(x=>Number(x[valueKey]||0)),1);
+ return rows.slice(0,10).map((x,i)=>{
+   const pct=Math.max(4,Math.round((Number(x[valueKey]||0)/max)*100));
+   return `<div style="margin-bottom:12px">
+     <div class="flex" style="gap:8px">
+       <b style="min-width:28px">#${i+1}</b>
+       <span class="grow">${esc(x.name)}</span>
+       <b>${formatValue(x[valueKey])}</b>
+     </div>
+     <div style="height:9px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:5px">
+       <div style="height:100%;width:${pct}%;background:currentColor;border-radius:999px"></div>
+     </div>
+   </div>`;
+ }).join("");
+}
+
+function renderMenuAnalytics(){
+ initAnalyticsFilters();
+ const {rows,start,end}=analyticsData();
+
+ const byQty=[...rows].sort((a,b)=>b.qty-a.qty||b.revenue-a.revenue||a.name.localeCompare(b.name));
+ const byRevenue=[...rows].sort((a,b)=>b.revenue-a.revenue||b.qty-a.qty||a.name.localeCompare(b.name));
+
+ const totalQty=rows.reduce((a,x)=>a+x.qty,0);
+ const totalRevenue=rows.reduce((a,x)=>a+x.revenue,0);
+ const top=byQty[0];
+
+ $("analyticsStats").innerHTML=`
+   <div class="card stat"><div class="label">Total Item Terjual</div><div class="value">${totalQty.toLocaleString("id-ID")}</div></div>
+   <div class="card stat"><div class="label">Total Omzet Menu</div><div class="value">${rp(totalRevenue)}</div></div>
+   <div class="card stat"><div class="label">Menu Paling Laku</div><div class="value" style="font-size:18px">${top?esc(top.name):"-"}</div><div class="muted">${top?top.qty+" item":"Belum ada data"}</div></div>
+   <div class="card stat"><div class="label">Jenis Menu Terjual</div><div class="value">${rows.length}</div></div>`;
+
+ $("analyticsRanking").innerHTML=analyticsBarRows(byQty,"qty",v=>`${Number(v).toLocaleString("id-ID")} item`);
+ $("analyticsRevenue").innerHTML=analyticsBarRows(byRevenue,"revenue",v=>rp(Number(v)));
+
+ const periodLabel=`${new Date(start+"T00:00:00").toLocaleDateString("id-ID")} – ${new Date(end+"T00:00:00").toLocaleDateString("id-ID")}`;
+ $("analyticsTable").innerHTML=`<thead><tr>
+   <th>Ranking</th>
+   <th>Menu</th>
+   <th class="money">Jumlah Terjual</th>
+   <th class="money">Jumlah Pesanan</th>
+   <th class="money">Jumlah Siswa</th>
+   <th class="money">Harga Rata-rata</th>
+   <th class="money">Omzet</th>
+ </tr></thead><tbody>${byQty.map((x,i)=>`<tr>
+   <td><b>#${i+1}</b></td>
+   <td><b>${esc(x.name)}</b></td>
+   <td class="money"><b>${x.qty.toLocaleString("id-ID")}</b></td>
+   <td class="money">${x.orderCount.toLocaleString("id-ID")}</td>
+   <td class="money">${x.studentCount.toLocaleString("id-ID")}</td>
+   <td class="money">${rp(Math.round(x.avg))}</td>
+   <td class="money"><b>${rp(x.revenue)}</b></td>
+ </tr>`).join("")||'<tr><td colspan="7" class="empty">Belum ada menu terjual pada periode ini</td></tr>'}</tbody>
+ <tfoot><tr><td colspan="2"><b>TOTAL</b><div class="muted">${periodLabel}</div></td><td class="money"><b>${totalQty.toLocaleString("id-ID")}</b></td><td colspan="3"></td><td class="money"><b>${rp(totalRevenue)}</b></td></tr></tfoot>`;
+}
 
 let billPaymentTargetId=null;
 function weeklyBillRows(){
@@ -1557,7 +1722,7 @@ function applyRoleNavigation(){
  const isMaster=!!profile?.is_master;
 
  // Approver sees operational/master menus, except Manajemen User.
- ["navWeekly","navBills","navApprovals","navStudents","navMenus"].forEach(id=>{
+ ["navWeekly","navBills","navApprovals","navStudents","navMenus","navAnalytics"].forEach(id=>{
    const el=$(id);
    if(el) el.classList.toggle("hidden", !isApprover);
  });
@@ -1570,7 +1735,7 @@ function applyRoleNavigation(){
  });
 
  const current=document.querySelector(".page:not(.hidden)");
- const restrictedForAdmin=["weeklyPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
+ const restrictedForAdmin=["weeklyPage","analyticsPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
  if(!isApprover && current && restrictedForAdmin.includes(current.id)){
    document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
    $("dashboardPage").classList.remove("hidden");
@@ -1599,6 +1764,7 @@ function renderAll(){
  renderTodayOrders();
  renderOrderHistory();
  renderWeekly();
+ renderMenuAnalytics();
  renderBills();
  renderPaymentSearch();
  renderPaymentsTable();
