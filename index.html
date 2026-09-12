@@ -594,7 +594,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
         <div class="card">
           <div class="field"><label>Cari siswa</label><input id="paymentSearch" placeholder="Nama atau kelas"></div>
           <div id="paymentResults" class="results"></div>
-          <div id="paymentSummary" class="notice" style="margin-top:12px">Pilih siswa untuk melihat tagihan.</div>
+          <div id="paymentSummary" class="notice" style="margin-top:12px">Pilih siswa untuk melihat tagihan. Semua pembayaran lama tetap dihitung otomatis ke saldo.</div>
           <div style="height:12px"></div>
           <div class="field"><label>Tanggal</label><input id="paymentDate" type="date"></div>
           <div class="field"><label>Nominal</label><input id="paymentAmount" type="number" min="0"></div>
@@ -612,7 +612,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
           <hr style="border:0;border-top:1px solid var(--line);margin:0 0 16px">
 
           <h3 style="margin-top:0">Riwayat Pembayaran</h3>
-          <div class="muted" style="margin-bottom:10px">Seluruh pembayaran siswa terpilih ditampilkan di bawah riwayat pesanannya.</div>
+          <div class="muted" style="margin-bottom:10px">Riwayat yang ditampilkan mulai 10 Agustus 2026. Untuk perhitungan saldo/tagihan, sistem tetap menghitung seluruh pembayaran lama yang tersimpan di database.</div>
           <div id="paymentsMobileHistory"></div>
           <div class="tablewrap"><table id="paymentsTable"></table></div>
         </div>
@@ -807,10 +807,16 @@ function profName(id){return profiles.find(p=>p.id===id)?.full_name||"-"}
 function orderTotal(o){return (o.order_items||[]).reduce((a,i)=>a+Number(i.unit_price)*Number(i.qty),0)}
 function activeOrder(o){return o.status!=="cancelled"}
 function billableOrder(o){return o.status!=="cancelled" && o.progress_status==="completed"}
+function studentPaymentTotal(studentId,asOf=today){
+ return payments
+   .filter(p=>p.student_id===studentId && (!asOf || p.payment_date<=asOf))
+   .reduce((sum,p)=>sum+Number(p.amount||0),0);
+}
+
 function balances(){
  return students.map(s=>{
   const total=orders.filter(o=>o.student_id===s.id&&billableOrder(o)).reduce((a,o)=>a+orderTotal(o),0);
-  const paid=payments.filter(p=>p.student_id===s.id).reduce((a,p)=>a+Number(p.amount),0);
+  const paid=studentPaymentTotal(s.id,today);
   return {...s,total,paid,balance:total-paid}
  })
 }
@@ -1351,9 +1357,7 @@ function weeklyBillRows(){
      .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
 
    // Semua pembayaran sampai hari ini tetap dialokasikan FIFO ke tagihan tertua.
-   const totalPayments=payments
-     .filter(p=>p.student_id===s.id&&p.payment_date<=today)
-     .reduce((a,p)=>a+Number(p.amount),0);
+   const totalPayments=studentPaymentTotal(s.id,today);
 
    const priorCharges=studentOrders
      .filter(o=>o.order_date<weekStart)
@@ -1579,9 +1583,7 @@ function allOutstandingWeeksForWhatsApp(){
        .filter(o=>o.student_id===s.id&&billableOrder(o))
        .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
 
-     const totalPayments=payments
-       .filter(p=>p.student_id===s.id&&p.payment_date<=today)
-       .reduce((a,p)=>a+Number(p.amount),0);
+     const totalPayments=studentPaymentTotal(s.id,today);
 
      const priorCharges=studentOrders
        .filter(o=>o.order_date<weekStart)
@@ -1789,7 +1791,7 @@ function renderPaymentsTable(){
  let list=[];
  if(selectedPaymentStudentId){
    list=payments
-     .filter(p=>p.student_id===selectedPaymentStudentId)
+     .filter(p=>p.student_id===selectedPaymentStudentId && p.payment_date>="2026-08-10")
      .sort((a,b)=>b.payment_date.localeCompare(a.payment_date)||new Date(b.created_at)-new Date(a.created_at));
  }
 
@@ -1803,7 +1805,7 @@ function renderPaymentsTable(){
    <td class="money positive">${rp(p.amount)}</td>
    <td>${esc(p.method||"-")}</td>
    <td>${esc(p.note||"-")}</td>
- </tr>`).join("")||`<tr><td colspan="4" class="empty">${selectedPaymentStudentId?"Belum ada riwayat pembayaran":"Pilih siswa untuk melihat riwayat pembayaran"}</td></tr>`}</tbody>`;
+ </tr>`).join("")||`<tr><td colspan="4" class="empty">${selectedPaymentStudentId?"Belum ada pembayaran tercatat sejak 10 Agustus 2026":"Pilih siswa untuk melihat riwayat pembayaran"}</td></tr>`}</tbody>`;
 
  if($("paymentsMobileHistory")){
    $("paymentsMobileHistory").innerHTML=list.map(p=>`
@@ -1814,7 +1816,7 @@ function renderPaymentsTable(){
        </div>
        ${p.note?`<div class="muted" style="margin-top:7px">${esc(p.note)}</div>`:""}
      </div>
-   `).join("")||`<div class="empty">${selectedPaymentStudentId?"Belum ada riwayat pembayaran":"Pilih siswa untuk melihat riwayat pembayaran"}</div>`;
+   `).join("")||`<div class="empty">${selectedPaymentStudentId?"Belum ada pembayaran tercatat sejak 10 Agustus 2026":"Pilih siswa untuk melihat riwayat pembayaran"}</div>`;
  }
 }
 $("savePayment").onclick=async()=>{if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});if(error)return alert(error.message);$("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.")}
