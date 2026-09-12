@@ -234,7 +234,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
 .menu-click-area{flex:1;min-width:0;cursor:pointer}
 
 /* v21 - payment mobile */
-#paymentsMobileHistory{display:none}
+#paymentsMobileHistory,#paymentOrdersMobileHistory{display:none}
 .payment-mobile-card{
   border:1px solid var(--line);
   border-radius:13px;
@@ -267,7 +267,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
   #paymentsPage #paymentSummary{font-size:13px;line-height:1.55}
   #paymentsPage #savePayment{width:100%;font-weight:900;min-height:48px}
   #paymentsPage .tablewrap{display:none}
-  #paymentsMobileHistory{display:block}
+  #paymentsMobileHistory,#paymentOrdersMobileHistory{display:block}
   #paymentsPage input,
   #paymentsPage select,
   #paymentsPage textarea{font-size:16px}
@@ -602,7 +602,20 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
           <div class="field"><label>Keterangan</label><textarea id="paymentNote" rows="2"></textarea></div>
           <button id="savePayment" class="btn primary">Simpan Pembayaran</button>
         </div>
-        <div class="card"><h3 style="margin-top:0">Riwayat Pembayaran</h3><div id="paymentsMobileHistory"></div><div class="tablewrap"><table id="paymentsTable"></table></div></div>
+        <div class="card">
+          <h3 style="margin-top:0">Riwayat Pesanan</h3>
+          <div class="muted" style="margin-bottom:10px">Pilih siswa untuk mencocokkan pesanan yang membentuk tagihan.</div>
+          <div id="paymentOrdersMobileHistory"></div>
+          <div class="tablewrap"><table id="paymentOrdersTable"></table></div>
+
+          <div style="height:18px"></div>
+          <hr style="border:0;border-top:1px solid var(--line);margin:0 0 16px">
+
+          <h3 style="margin-top:0">Riwayat Pembayaran</h3>
+          <div class="muted" style="margin-bottom:10px">Seluruh pembayaran siswa terpilih ditampilkan di bawah riwayat pesanannya.</div>
+          <div id="paymentsMobileHistory"></div>
+          <div class="tablewrap"><table id="paymentsTable"></table></div>
+        </div>
       </div>
     </section>
 
@@ -1724,20 +1737,84 @@ function renderPaymentSearch(){
 
 $("paymentSearch").oninput=renderPaymentSearch;
 function renderPaymentsTable(){
- let list=[...payments];
- if(selectedPaymentStudentId)list=list.filter(p=>p.student_id===selectedPaymentStudentId);
- list=list.slice(0,60);
- $("paymentsTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th class="money">Nominal</th><th>Metode</th></tr></thead><tbody>${list.map(p=>`<tr><td>${p.payment_date}</td><td>${esc(p.students?.name||"-")}</td><td class="money positive">${rp(p.amount)}</td><td>${esc(p.method)}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Belum ada pembayaran</td></tr>'}</tbody>`;
+ // RIWAYAT PESANAN — selalu mengikuti siswa yang dipilih.
+ let orderList=[];
+ if(selectedPaymentStudentId){
+   orderList=orders
+     .filter(o=>o.student_id===selectedPaymentStudentId)
+     .sort((a,b)=>b.order_date.localeCompare(a.order_date)||new Date(b.created_at)-new Date(a.created_at));
+ }
+
+ $("paymentOrdersTable").innerHTML=`<thead><tr>
+   <th>Tanggal</th>
+   <th>Pesanan</th>
+   <th>Status</th>
+   <th class="money">Total</th>
+ </tr></thead><tbody>${orderList.map(o=>`<tr>
+   <td>${o.order_date}</td>
+   <td>${(o.order_items||[]).map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")||"-"}${orderNoteHtml(o)}</td>
+   <td>${
+     o.status==="cancelled"
+       ? '<span class="pill" style="background:#fff0f2;color:#be123c">Dibatalkan</span>'
+       : o.status==="cancel_pending"
+         ? '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Approval</span>'
+         : o.progress_status==="completed"
+           ? '<span class="pill status-soft-completed">Selesai</span>'
+           : '<span class="pill status-soft-preparing">Sementara Dibuat</span>'
+   }</td>
+   <td class="money">${rp(orderTotal(o))}</td>
+ </tr>`).join("")||`<tr><td colspan="4" class="empty">${selectedPaymentStudentId?"Belum ada riwayat pesanan":"Pilih siswa untuk melihat riwayat pesanan"}</td></tr>`}</tbody>`;
+
+ if($("paymentOrdersMobileHistory")){
+   $("paymentOrdersMobileHistory").innerHTML=orderList.map(o=>`
+     <div class="payment-mobile-card">
+       <div class="payment-mobile-head">
+         <div>
+           <b>${o.order_date}</b>
+           <div class="muted">${
+             o.status==="cancelled"?"Dibatalkan":
+             o.status==="cancel_pending"?"Menunggu Approval":
+             o.progress_status==="completed"?"Selesai":"Sementara Dibuat"
+           }</div>
+         </div>
+         <div class="payment-mobile-amount">${rp(orderTotal(o))}</div>
+       </div>
+       <div style="margin-top:8px">${(o.order_items||[]).map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")||"-"}</div>
+       ${orderNoteHtml(o)}
+     </div>
+   `).join("")||`<div class="empty">${selectedPaymentStudentId?"Belum ada riwayat pesanan":"Pilih siswa untuk melihat riwayat pesanan"}</div>`;
+ }
+
+ // RIWAYAT PEMBAYARAN — berada tepat di bawah riwayat pesanan siswa yang sama.
+ let list=[];
+ if(selectedPaymentStudentId){
+   list=payments
+     .filter(p=>p.student_id===selectedPaymentStudentId)
+     .sort((a,b)=>b.payment_date.localeCompare(a.payment_date)||new Date(b.created_at)-new Date(a.created_at));
+ }
+
+ $("paymentsTable").innerHTML=`<thead><tr>
+   <th>Tanggal</th>
+   <th class="money">Nominal</th>
+   <th>Metode</th>
+   <th>Keterangan</th>
+ </tr></thead><tbody>${list.map(p=>`<tr>
+   <td>${p.payment_date}</td>
+   <td class="money positive">${rp(p.amount)}</td>
+   <td>${esc(p.method||"-")}</td>
+   <td>${esc(p.note||"-")}</td>
+ </tr>`).join("")||`<tr><td colspan="4" class="empty">${selectedPaymentStudentId?"Belum ada riwayat pembayaran":"Pilih siswa untuk melihat riwayat pembayaran"}</td></tr>`}</tbody>`;
+
  if($("paymentsMobileHistory")){
    $("paymentsMobileHistory").innerHTML=list.map(p=>`
      <div class="payment-mobile-card">
        <div class="payment-mobile-head">
-         <div><b>${esc(p.students?.name||"-")}</b><div class="muted">${p.payment_date} • ${esc(p.method||"-")}</div></div>
+         <div><b>${p.payment_date}</b><div class="muted">${esc(p.method||"-")}</div></div>
          <div class="payment-mobile-amount positive">${rp(p.amount)}</div>
        </div>
        ${p.note?`<div class="muted" style="margin-top:7px">${esc(p.note)}</div>`:""}
      </div>
-   `).join("")||'<div class="empty">Belum ada pembayaran</div>';
+   `).join("")||`<div class="empty">${selectedPaymentStudentId?"Belum ada riwayat pembayaran":"Pilih siswa untuk melihat riwayat pembayaran"}</div>`;
  }
 }
 $("savePayment").onclick=async()=>{if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});if(error)return alert(error.message);$("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.")}
