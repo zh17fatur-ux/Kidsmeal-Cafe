@@ -433,8 +433,7 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
       <button data-page="orders" id="navOrders">🧾 <span>Input Pesanan</span></button>
       <button data-page="today" id="todayNav">📋 <span>Rekap Pesanan Hari Ini</span></button>
 <button data-page="weekly" id="navWeekly">📅 <span>Rekap Mingguan</span></button>
-      <button data-page="analytics" id="navAnalytics">📊 <span>Analisa Menu</span></button>
-      <button data-page="bills" id="navBills">💳 <span>Tagihan</span></button>
+<button data-page="bills" id="navBills">💳 <span>Tagihan</span></button>
       <button data-page="payments" id="navPayments">💵 <span>Pembayaran</span></button>
       <button data-page="approvals" id="navApprovals">✅ <span>Persetujuan Batal</span></button>
       <button data-page="students" id="navStudents">👥 <span>Data Siswa</span></button>
@@ -532,52 +531,10 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
       </div>
     </section>
 
-    <section id="analyticsPage" class="page hidden">
-      <div class="grid four" id="analyticsStats"></div>
-
-      <div class="card" style="margin-top:14px">
-        <div class="flex" style="align-items:end">
-          <div class="field" style="margin:0;min-width:170px">
-            <label>Dari Tanggal</label>
-            <input id="analyticsStart" type="date">
-          </div>
-          <div class="field" style="margin:0;min-width:170px">
-            <label>Sampai Tanggal</label>
-            <input id="analyticsEnd" type="date">
-          </div>
-          <div class="field" style="margin:0;min-width:170px">
-            <label>Kelas</label>
-            <select id="analyticsClass"><option value="all">Semua Kelas</option></select>
-          </div>
-          <input id="analyticsSearch" placeholder="Cari nama menu" style="max-width:260px">
-        </div>
-        <div class="muted" style="margin-top:8px">Analisa hanya menghitung pesanan berstatus <b>Selesai</b> dan tidak dibatalkan.</div>
-      </div>
-
-      <div class="grid two" style="margin-top:14px">
-        <div class="card">
-          <h3 style="margin-top:0">🏆 Ranking Menu Terlaris</h3>
-          <div class="muted" style="margin-bottom:10px">Diurutkan berdasarkan jumlah item terjual.</div>
-          <div id="analyticsRanking"></div>
-        </div>
-        <div class="card">
-          <h3 style="margin-top:0">💰 Ranking Omzet Menu</h3>
-          <div class="muted" style="margin-bottom:10px">Diurutkan berdasarkan omzet dari menu.</div>
-          <div id="analyticsRevenue"></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:14px">
-        <h3 style="margin-top:0">Detail Penjualan Menu</h3>
-        <div class="tablewrap"><table id="analyticsTable"></table></div>
-      </div>
-    </section>
-
-    <section id="billsPage" class="page hidden">
+<section id="billsPage" class="page hidden">
       <div class="grid four" id="billStats"></div>
       <div class="card" style="margin-top:14px">
         <div class="flex">
-  <div class="field" style="margin:0;min-width:190px"><label>Pilih Pekan</label><input id="billWeekDate" type="date"></div>
   <input id="billSearch" placeholder="Cari siswa" style="max-width:300px">
   <select id="billFilter" style="max-width:190px"><option value="all">Semua Saldo Aktif</option><option value="unpaid">Belum Lunas</option><option value="deposit">Deposit</option></select>
   <button id="downloadBillsExcel" class="btn primary">📥 Download Excel</button>
@@ -728,7 +685,7 @@ const rp=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maxim
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
 const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
 const today=iso(new Date());
-$("orderDate").value=today;$("paymentDate").value=today;$("weekDate").value=today;$("billWeekDate").value=today;
+$("orderDate").value=today;$("paymentDate").value=today;$("weekDate").value=today;
 
 let session=null,profile=null,students=[],menus=[],orders=[],payments=[],profiles=[];
 let selectedStudentId=null,selectedPaymentStudentId=null,cart={},cancelTarget=null,approvalTarget=null;
@@ -830,7 +787,7 @@ function orderNoteHtml(o){
  const n=(o.order_note||"").trim();
  return n?`<div class="notice" style="margin-top:7px;padding:8px 10px;background:#f8fafc;border-color:#e2e8f0"><b>📝 Catatan:</b> ${esc(n)}</div>`:"";
 }
-const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],analytics:["Analisa Menu","Lihat menu terlaris, jumlah terjual, dan omzet"],bills:["Tagihan","Hanya saldo belum lunas dan deposit"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
+const pages={dashboard:["Dashboard","Ringkasan data online"],today:["Rekap Pesanan Hari Ini","Pantau jam dan status pesanan hari ini"],orders:["Input Pesanan","Pesanan baru masuk status Sementara Dibuat"],weekly:["Rekap Mingguan","Hanya pesanan yang sudah selesai"],bills:["Tagihan","Tagihan aktif dimulai ulang setelah lunas"],payments:["Pembayaran","Cari siswa lalu lihat saldo"],approvals:["Persetujuan Pembatalan","Audit dua pihak"],students:["Data Siswa","Kelola nama dan kelas"],menus:["Data Menu","Kelola menu dan harga"],users:["Manajemen User","Atur role Admin dan Approver"]};
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(b.dataset.page+"Page").classList.remove("hidden");$("pageTitle").textContent=pages[b.dataset.page][0];$("pageSub").textContent=pages[b.dataset.page][1];renderAll()});
 
 function localDateFromTimestamp(ts){
@@ -1193,7 +1150,7 @@ $("todaySearch").oninput=renderTodayOrders;
 $("todayStatusFilter").onchange=renderTodayOrders;
 
 function renderOrderHistory(){
- const q=$("orderHistorySearch").value.toLowerCase().trim();let list=orders.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q)).slice(0,100);
+ const q=$("orderHistorySearch").value.toLowerCase().trim();let list=orders.filter(o=>!q||((o.students?.name||"")+" "+o.order_items.map(i=>i.menu_name).join(" ")).toLowerCase().includes(q)).slice(0,60);
  $("orderHistoryTable").innerHTML=`<thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status</th><th>Alasan/Audit</th><th class="money">Total</th><th></th></tr></thead><tbody>${list.map(o=>{let audit="-";if(o.cancel_reason){audit=`<b>${esc(o.cancel_reason)}</b>${o.cancel_note?`<div>${esc(o.cancel_note)}</div>`:""}<div class="muted">Pengaju: ${esc(profName(o.cancel_requested_by))}</div>${o.cancel_decided_by?`<div class="muted">Keputusan: ${esc(profName(o.cancel_decided_by))}</div>`:""}`};const action=(profile?.role==="admin"&&(o.status==="active"||o.status==="cancel_rejected"))?`<button class="btn small danger" data-cancel="${o.id}">Ajukan Batal</button>`:(profile?.role==="approver"&&(o.status==="active"||o.status==="cancel_rejected")?`<span class="muted">Admin yang mengajukan</span>`:"");return `<tr><td>${o.order_date}</td><td><b>${esc(o.students?.name||"-")}</b><div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${statusBadge(o)}<div style="margin-top:4px">${o.status==="active"?(o.progress_status==="completed"?'<span class="pill" style="background:#ecfdf5;color:#047857">Selesai</span>':'<span class="pill" style="background:#eff6ff;color:#1d4ed8">Sementara Dibuat</span>'):""}</div></td><td>${audit}</td><td class="money">${rp(orderTotal(o))}</td><td>${action}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Belum ada pesanan</td></tr>'}</tbody>`;
  document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>openCancel(b.dataset.cancel))
 }
@@ -1222,264 +1179,93 @@ function renderWeekly(){
 $("weekDate").onchange=renderWeekly;$("weekClass").onchange=renderWeekly;
 
 
-let analyticsInitialized=false;
-
-function initAnalyticsFilters(){
- if(analyticsInitialized)return;
- analyticsInitialized=true;
-
- const now=new Date(today+"T00:00:00");
- const first=new Date(now.getFullYear(),now.getMonth(),1);
- $("analyticsStart").value=iso(first);
- $("analyticsEnd").value=today;
-
- ["analyticsStart","analyticsEnd","analyticsClass"].forEach(id=>{
-   $(id).onchange=renderMenuAnalytics;
- });
- $("analyticsSearch").oninput=renderMenuAnalytics;
-}
-
-function analyticsData(){
- initAnalyticsFilters();
-
- const start=$("analyticsStart").value||today;
- const end=$("analyticsEnd").value||today;
- const selectedClass=$("analyticsClass").value||"all";
- const q=($("analyticsSearch").value||"").toLowerCase().trim();
-
- // Keep class choices synced with active student data.
- const classes=[...new Set(students.filter(s=>s.active).map(s=>s.class_name).filter(Boolean))]
-   .sort((a,b)=>a.localeCompare(b,"id",{numeric:true}));
- const previous=$("analyticsClass").value||"all";
- $("analyticsClass").innerHTML='<option value="all">Semua Kelas</option>'+classes.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
- if(previous==="all"||classes.includes(previous))$("analyticsClass").value=previous;
-
- const map=new Map();
-
- orders
-  .filter(o=>billableOrder(o)&&o.order_date>=start&&o.order_date<=end)
-  .filter(o=>selectedClass==="all"||(o.students?.class_name||"")===selectedClass)
-  .forEach(o=>{
-    (o.order_items||[]).forEach(i=>{
-      const key=(i.menu_name||"Menu").trim();
-      if(!map.has(key))map.set(key,{name:key,qty:0,revenue:0,orders:new Set(),students:new Set()});
-      const row=map.get(key);
-      row.qty+=Number(i.qty||0);
-      row.revenue+=Number(i.unit_price||0)*Number(i.qty||0);
-      row.orders.add(o.id);
-      if(o.student_id)row.students.add(o.student_id);
-    });
-  });
-
- let rows=[...map.values()].map(x=>({
-   name:x.name,
-   qty:x.qty,
-   revenue:x.revenue,
-   orderCount:x.orders.size,
-   studentCount:x.students.size,
-   avg:x.qty?x.revenue/x.qty:0
- }));
-
- if(q)rows=rows.filter(x=>x.name.toLowerCase().includes(q));
-
- return {rows,start,end,selectedClass};
-}
-
-function analyticsBarRows(rows,valueKey,formatValue){
- if(!rows.length)return '<div class="empty">Belum ada data penjualan pada periode ini.</div>';
- const max=Math.max(...rows.map(x=>Number(x[valueKey]||0)),1);
- return rows.slice(0,10).map((x,i)=>{
-   const pct=Math.max(4,Math.round((Number(x[valueKey]||0)/max)*100));
-   return `<div style="margin-bottom:12px">
-     <div class="flex" style="gap:8px">
-       <b style="min-width:28px">#${i+1}</b>
-       <span class="grow">${esc(x.name)}</span>
-       <b>${formatValue(x[valueKey])}</b>
-     </div>
-     <div style="height:9px;background:#eef2f7;border-radius:999px;overflow:hidden;margin-top:5px">
-       <div style="height:100%;width:${pct}%;background:currentColor;border-radius:999px"></div>
-     </div>
-   </div>`;
- }).join("");
-}
-
-function renderMenuAnalytics(){
- initAnalyticsFilters();
- const {rows,start,end}=analyticsData();
-
- const byQty=[...rows].sort((a,b)=>b.qty-a.qty||b.revenue-a.revenue||a.name.localeCompare(b.name));
- const byRevenue=[...rows].sort((a,b)=>b.revenue-a.revenue||b.qty-a.qty||a.name.localeCompare(b.name));
-
- const totalQty=rows.reduce((a,x)=>a+x.qty,0);
- const totalRevenue=rows.reduce((a,x)=>a+x.revenue,0);
- const top=byQty[0];
-
- $("analyticsStats").innerHTML=`
-   <div class="card stat"><div class="label">Total Item Terjual</div><div class="value">${totalQty.toLocaleString("id-ID")}</div></div>
-   <div class="card stat"><div class="label">Total Omzet Menu</div><div class="value">${rp(totalRevenue)}</div></div>
-   <div class="card stat"><div class="label">Menu Paling Laku</div><div class="value" style="font-size:18px">${top?esc(top.name):"-"}</div><div class="muted">${top?top.qty+" item":"Belum ada data"}</div></div>
-   <div class="card stat"><div class="label">Jenis Menu Terjual</div><div class="value">${rows.length}</div></div>`;
-
- $("analyticsRanking").innerHTML=analyticsBarRows(byQty,"qty",v=>`${Number(v).toLocaleString("id-ID")} item`);
- $("analyticsRevenue").innerHTML=analyticsBarRows(byRevenue,"revenue",v=>rp(Number(v)));
-
- const periodLabel=`${new Date(start+"T00:00:00").toLocaleDateString("id-ID")} – ${new Date(end+"T00:00:00").toLocaleDateString("id-ID")}`;
- $("analyticsTable").innerHTML=`<thead><tr>
-   <th>Ranking</th>
-   <th>Menu</th>
-   <th class="money">Jumlah Terjual</th>
-   <th class="money">Jumlah Pesanan</th>
-   <th class="money">Jumlah Siswa</th>
-   <th class="money">Harga Rata-rata</th>
-   <th class="money">Omzet</th>
- </tr></thead><tbody>${byQty.map((x,i)=>`<tr>
-   <td><b>#${i+1}</b></td>
-   <td><b>${esc(x.name)}</b></td>
-   <td class="money"><b>${x.qty.toLocaleString("id-ID")}</b></td>
-   <td class="money">${x.orderCount.toLocaleString("id-ID")}</td>
-   <td class="money">${x.studentCount.toLocaleString("id-ID")}</td>
-   <td class="money">${rp(Math.round(x.avg))}</td>
-   <td class="money"><b>${rp(x.revenue)}</b></td>
- </tr>`).join("")||'<tr><td colspan="7" class="empty">Belum ada menu terjual pada periode ini</td></tr>'}</tbody>
- <tfoot><tr><td colspan="2"><b>TOTAL</b><div class="muted">${periodLabel}</div></td><td class="money"><b>${totalQty.toLocaleString("id-ID")}</b></td><td colspan="3"></td><td class="money"><b>${rp(totalRevenue)}</b></td></tr></tfoot>`;
-}
-
 let billPaymentTargetId=null;
-function weeklyBillRows(){
- const base=startWeek($("billWeekDate").value||today);
- const weekStart=iso(base);
- const endDate=new Date(base);endDate.setDate(base.getDate()+6);
- const weekEnd=iso(endDate);
-
- const rows=students.map(s=>{
-   const studentOrders=orders
+function currentBillingRows(){
+ return students.map(s=>{
+   const completedOrders=orders
      .filter(o=>o.student_id===s.id&&billableOrder(o))
      .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
 
-   // Semua pembayaran sampai hari ini tetap dialokasikan FIFO ke tagihan tertua.
+   const totalCharges=completedOrders.reduce((sum,o)=>sum+orderTotal(o),0);
    const totalPayments=studentPaymentTotal(s.id,today);
+   const balance=totalCharges-totalPayments;
 
-   const priorCharges=studentOrders
-     .filter(o=>o.order_date<weekStart)
-     .reduce((a,o)=>a+orderTotal(o),0);
-
-   const weekCharges=studentOrders
-     .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd)
-     .reduce((a,o)=>a+orderTotal(o),0);
-
-   // Pembayaran pertama-tama menutup seluruh tagihan sebelum pekan terpilih.
-   const paidToPrior=Math.min(totalPayments,priorCharges);
-   const openingDebt=Math.max(0,priorCharges-paidToPrior);
-
-   // Sisa pembayaran setelah tagihan lama lunas dapat dipakai ke pekan terpilih.
-   const paymentAfterPrior=Math.max(0,totalPayments-priorCharges);
-   const allocatedToWeek=Math.min(weekCharges,paymentAfterPrior);
-
-   // Jika setelah seluruh tagihan sampai pekan terpilih masih ada uang lebih,
-   // uang tersebut menjadi deposit akhir/credit untuk pekan selanjutnya.
-   const chargesThroughWeek=priorCharges+weekCharges;
-   const depositThroughWeek=Math.max(0,totalPayments-chargesThroughWeek);
-
-   // Deposit awal adalah kredit yang memang sudah tersedia setelah melunasi
-   // seluruh tagihan sebelum pekan ini.
-   const openingDeposit=Math.max(0,totalPayments-priorCharges);
-
-   // Tagihan akhir sekarang TERHUBUNG: tagihan lama + pesanan pekan ini,
-   // dikurangi pembayaran yang sudah dialokasikan FIFO.
-   const closingNet=(priorCharges+weekCharges)-totalPayments;
-   const weekBill=Math.max(0,closingNet);
-   const closingDeposit=Math.max(0,-closingNet);
+   // Siklus sederhana:
+   // pembayaran menutup seluruh tagihan lama terlebih dahulu.
+   // Bila balance <= 0, siswa dianggap LUNAS dan pesanan berikutnya
+   // otomatis memulai siklus tagihan baru dari nol.
+   const activeBill=Math.max(0,balance);
+   const deposit=Math.max(0,-balance);
 
    return {
      id:s.id,
      name:s.name,
      class_name:s.class_name,
-     openingDebt,
-     openingDeposit,
-     weekCharges,
-     weekPayments:allocatedToWeek,
-     weekBill,
-     closingDeposit,
-     weekStart,
-     weekEnd
+     totalCharges,
+     totalPayments,
+     activeBill,
+     deposit
    };
  });
- return {rows,weekStart,weekEnd};
 }
+
 function renderBills(){
- const {rows:allRows,weekStart,weekEnd}=weeklyBillRows();
- const labelStart=new Date(weekStart+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
- const labelEnd=new Date(weekEnd+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
- $("billWeekLabel").innerHTML=`Periode tagihan: <b>${labelStart} – ${labelEnd}</b>`;
+ const allRows=currentBillingRows();
+ const active=allRows.filter(x=>x.activeBill>0||x.deposit>0);
+ const unpaid=active.filter(x=>x.activeBill>0);
+ const deposit=active.filter(x=>x.deposit>0);
 
- // Baris muncul jika ada tagihan awal, pesanan pekan ini,
- // pembayaran yang dialokasikan, atau deposit aktif.
- const active=allRows.filter(x=>x.openingDebt>0||x.weekCharges>0||x.weekPayments>0||x.openingDeposit>0||x.closingDeposit>0||x.weekBill>0);
-
- const unpaid=active.filter(x=>x.weekBill>0);
- const deposit=active.filter(x=>x.closingDeposit>0);
+ $("billWeekLabel").innerHTML=`Tagihan aktif dihitung dari seluruh pesanan <b>Selesai</b> dikurangi seluruh pembayaran. Setelah saldo menjadi <b>0 (Lunas)</b>, pesanan berikutnya memulai tagihan baru dari nol.`;
 
  $("billStats").innerHTML=`
- <div class="card stat"><div class="label">Tagihan Pekan Ini</div><div class="value">${unpaid.length}</div></div>
- <div class="card stat"><div class="label">Total Tagihan Pekan Ini</div><div class="value">${rp(unpaid.reduce((a,x)=>a+x.weekBill,0))}</div></div>
+ <div class="card stat"><div class="label">Siswa Belum Lunas</div><div class="value">${unpaid.length}</div></div>
+ <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(unpaid.reduce((a,x)=>a+x.activeBill,0))}</div></div>
  <div class="card stat"><div class="label">Deposit Aktif</div><div class="value">${deposit.length}</div></div>
- <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(deposit.reduce((a,x)=>a+x.closingDeposit,0))}</div></div>`;
+ <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(deposit.reduce((a,x)=>a+x.deposit,0))}</div></div>`;
 
  const q=$("billSearch").value.toLowerCase().trim(),f=$("billFilter").value;
  let rows=active
    .filter(x=>!q||(x.name+" "+x.class_name).toLowerCase().includes(q))
-   .filter(x=>f==="all"||(f==="unpaid"?x.weekBill>0:x.closingDeposit>0));
+   .filter(x=>f==="all"||(f==="unpaid"?x.activeBill>0:x.deposit>0));
 
- const canPay=profile?.role==="approver";
+ const canPay=["admin","approver"].includes(profile?.role);
 
  $("billsTable").innerHTML=`<thead><tr>
    <th>Siswa</th>
    <th>Kelas</th>
-   <th class="money">Tagihan Awal</th>
-   <th class="money">Deposit Awal</th>
-   <th class="money">Pesanan Pekan Ini</th>
-   <th class="money">Pembayaran Dialokasikan</th>
-   <th class="money">Tagihan / Deposit Akhir</th>
+   <th class="money">Total Pesanan Selesai</th>
+   <th class="money">Total Pembayaran</th>
+   <th class="money">Status Saldo</th>
    ${canPay?"<th>Pembayaran</th>":""}
  </tr></thead><tbody>${rows.map(x=>`<tr>
    <td><b>${esc(x.name)}</b></td>
    <td>${esc(x.class_name)}</td>
-   <td class="money negative">${x.openingDebt>0?rp(x.openingDebt):"-"}</td>
-   <td class="money positive">${x.openingDeposit>0?rp(x.openingDeposit):"-"}</td>
-   <td class="money">${x.weekCharges>0?rp(x.weekCharges):"-"}</td>
-   <td class="money positive">${x.weekPayments>0?rp(x.weekPayments):"-"}</td>
-   <td class="money ${x.weekBill>0?"negative":x.closingDeposit>0?"positive":""}">
-     <b>${
-       x.weekBill>0
-         ? "Tagihan "+rp(x.weekBill)
-         : x.closingDeposit>0
-           ? "Deposit "+rp(x.closingDeposit)
-           : "Lunas"
-     }</b>
-   </td>
+   <td class="money">${rp(x.totalCharges)}</td>
+   <td class="money positive">${rp(x.totalPayments)}</td>
+   <td class="money ${x.activeBill>0?"negative":"positive"}"><b>${
+     x.activeBill>0 ? "Tagihan "+rp(x.activeBill) :
+     x.deposit>0 ? "Deposit "+rp(x.deposit) : "Lunas"
+   }</b></td>
    ${canPay?`<td>${
-     x.weekBill>0
-       ? `<button class="btn small primary bill-pay-btn" data-bill-pay="${x.id}">Isi Pembayaran</button>`
-       : `<span class="muted">${x.closingDeposit>0?"Deposit":"Lunas"}</span>`
+     x.activeBill>0
+       ? `<button class="btn small primary bill-pay-btn" data-bill-pay="${x.id}">Bayar Tagihan</button>`
+       : `<span class="muted">${x.deposit>0?"Deposit":"Lunas"}</span>`
    }</td>`:""}
- </tr>`).join("")||`<tr><td colspan="${canPay?8:7}" class="empty">Tidak ada tagihan atau deposit aktif pada pekan ini</td></tr>`}</tbody>`;
+ </tr>`).join("")||`<tr><td colspan="${canPay?6:5}" class="empty">Semua siswa sudah lunas</td></tr>`}</tbody>`;
 
  document.querySelectorAll("[data-bill-pay]").forEach(btn=>btn.onclick=()=>{
-   if(profile?.role!=="approver")return;
    billPaymentTargetId=btn.dataset.billPay;
    const s=allRows.find(x=>x.id===billPaymentTargetId);
    if(!s)return;
-
    $("billPaymentSummary").innerHTML=`
      <b>${esc(s.name)}</b> • ${esc(s.class_name)}<br>
-     Deposit awal: ${s.openingDeposit>0?rp(s.openingDeposit):"-"}<br>
-     Pesanan pekan ini: ${rp(s.weekCharges)} • Pembayaran pekan ini: ${rp(s.weekPayments)}<br>
-     <b class="negative">Tagihan pekan ini: ${rp(s.weekBill)}</b>`;
-
+     Total pesanan selesai: ${rp(s.totalCharges)}<br>
+     Total pembayaran: ${rp(s.totalPayments)}<br>
+     <b class="negative">Tagihan aktif: ${rp(s.activeBill)}</b>`;
    $("billPaymentDate").value=today;
-   $("billPaymentAmount").value=Math.max(0,s.weekBill);
+   $("billPaymentAmount").value=Math.max(0,s.activeBill);
    $("billPaymentMethod").value="Tunai";
-   $("billPaymentNote").value="";
+   $("billPaymentNote").value="Pelunasan tagihan aktif";
    $("billPaymentModal").classList.remove("hidden");
  });
 }
@@ -1498,126 +1284,36 @@ function downloadBillsExcel(){
    alert("Fitur Excel belum termuat. Pastikan perangkat terhubung ke internet lalu coba lagi.");
    return;
  }
-
- const {rows,weekStart,weekEnd}=weeklyBillRows();
- const weekNo=isoWeekNumber(weekStart);
-
- // Hanya tagihan yang memang muncul pada pekan terpilih.
- // Deposit tidak menjadi baris tersendiri karena format rekap hanya meminta Nominal Tagihan.
- const billRows=rows
-   .filter(x=>x.weekBill>0)
-   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id")||(a.name||"").localeCompare(b.name||"","id"));
+ const billRows=currentBillingRows()
+   .filter(x=>x.activeBill>0)
+   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
 
  if(!billRows.length){
-   alert("Tidak ada tagihan pada pekan yang dipilih.");
+   alert("Tidak ada tagihan aktif.");
    return;
  }
 
- const fmtDate=ds=>new Date(ds+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
- const title=`REKAP TAGIHAN PEKAN KE-${weekNo}`;
- const period=`Periode: ${fmtDate(weekStart)} - ${fmtDate(weekEnd)}`;
-
  const aoa=[
-   [title],
-   [period],
+   ["REKAP TAGIHAN AKTIF KIDSMEAL"],
+   [`Per ${new Date(today+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"})}`],
    [],
    ["Nama Siswa","Kelas","Nominal Tagihan"],
-   ...billRows.map(x=>[x.name,x.class_name,Number(x.weekBill)])
+   ...billRows.map(x=>[x.name,x.class_name,Number(x.activeBill)])
  ];
-
  const ws=XLSX.utils.aoa_to_sheet(aoa);
  ws["!merges"]=[
    {s:{r:0,c:0},e:{r:0,c:2}},
    {s:{r:1,c:0},e:{r:1,c:2}}
  ];
  ws["!cols"]=[{wch:32},{wch:16},{wch:20}];
-
- // Currency formatting
  for(let r=4;r<4+billRows.length;r++){
    const cell=ws[XLSX.utils.encode_cell({r:r,c:2})];
    if(cell) cell.z='"Rp"#,##0';
  }
-
  const wb=XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb,ws,`Tagihan Pekan ${weekNo}`);
- XLSX.writeFile(wb,`Rekap-Tagihan-Pekan-${weekNo}_${weekStart}_${weekEnd}.xlsx`);
+ XLSX.utils.book_append_sheet(wb,ws,"Tagihan Aktif");
+ XLSX.writeFile(wb,`Rekap-Tagihan-Aktif_${today}.xlsx`);
 }
-
-
-
-function mondayOfDate(dateString){
- const d=new Date(dateString+"T00:00:00");
- const day=d.getDay()||7;
- d.setDate(d.getDate()-day+1);
- return d;
-}
-
-function formatWaPeriod(start,end){
- const s=new Date(start+"T00:00:00");
- const e=new Date(end+"T00:00:00");
- const optsSame={day:"numeric"};
- const monthYear={month:"long",year:"numeric"};
- if(s.getMonth()===e.getMonth()&&s.getFullYear()===e.getFullYear()){
-   return `${s.toLocaleDateString("id-ID",optsSame)}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
- }
- return `${s.toLocaleDateString("id-ID",{day:"numeric",month:"long"})}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
-}
-
-function allOutstandingWeeksForWhatsApp(){
- // Kumpulkan semua pekan yang punya pesanan billable.
- const weekKeys=new Set(
-   orders
-     .filter(o=>billableOrder(o))
-     .map(o=>iso(mondayOfDate(o.order_date)))
- );
-
- const groups=[];
-
- [...weekKeys].sort().forEach(weekStart=>{
-   const base=new Date(weekStart+"T00:00:00");
-   const end=new Date(base); end.setDate(end.getDate()+6);
-   const weekEnd=iso(end);
-
-   const rows=students.map(s=>{
-     const studentOrders=orders
-       .filter(o=>o.student_id===s.id&&billableOrder(o))
-       .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
-
-     const totalPayments=studentPaymentTotal(s.id,today);
-
-     const priorCharges=studentOrders
-       .filter(o=>o.order_date<weekStart)
-       .reduce((a,o)=>a+orderTotal(o),0);
-
-     const weekCharges=studentOrders
-       .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd)
-       .reduce((a,o)=>a+orderTotal(o),0);
-
-     if(weekCharges<=0)return null;
-
-     // FIFO: pembayaran menutup tagihan lama dulu, lalu tagihan pekan ini.
-     const availableForWeek=Math.max(0,totalPayments-priorCharges);
-     const paidToWeek=Math.min(weekCharges,availableForWeek);
-     const weekOutstanding=Math.max(0,weekCharges-paidToWeek);
-
-     if(weekOutstanding<=0)return null;
-
-     return {
-       name:s.name,
-       class_name:s.class_name,
-       amount:weekOutstanding
-     };
-   }).filter(Boolean);
-
-   if(rows.length){
-     rows.sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
-     groups.push({weekStart,weekEnd,rows});
-   }
- });
-
- return groups;
-}
-
 
 function compactWaAmount(value){
  const n=Number(value||0);
@@ -1633,31 +1329,24 @@ function compactWaAmount(value){
 }
 
 function shareBillsWhatsApp(){
- const groups=allOutstandingWeeksForWhatsApp();
+ const rows=currentBillingRows()
+   .filter(x=>x.activeBill>0)
+   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
 
- if(!groups.length){
+ if(!rows.length){
    alert("Tidak ada tagihan aktif yang belum lunas.");
    return;
  }
 
- const lines=["*REKAP TAGIHAN KIDSMEAL*",""];
-
- groups.forEach((g,idx)=>{
-   lines.push(`*Tagihan periode ${formatWaPeriod(g.weekStart,g.weekEnd)}*`);
-   g.rows.forEach((x,i)=>{
-     lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.amount)}*`);
-   });
-   const subtotal=g.rows.reduce((a,x)=>a+Number(x.amount||0),0);
-   lines.push(`*Subtotal: ${compactWaAmount(subtotal)}*`);
-   if(idx<groups.length-1)lines.push("");
+ const lines=["*REKAP TAGIHAN AKTIF KIDSMEAL*",""];
+ rows.forEach((x,i)=>{
+   lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.activeBill)}*`);
  });
-
- const grand=groups.flatMap(g=>g.rows).reduce((a,x)=>a+Number(x.amount||0),0);
+ const grand=rows.reduce((a,x)=>a+Number(x.activeBill||0),0);
  lines.push("");
  lines.push(`*Total Seluruh Tagihan: ${compactWaAmount(grand)}*`);
 
- const message=lines.join("\n");
- const url=`https://wa.me/?text=${encodeURIComponent(message)}`;
+ const url=`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
  const w=window.open(url,"_blank");
  if(!w)window.location.href=url;
 }
@@ -1666,7 +1355,7 @@ $("shareBillsWhatsApp").onclick=shareBillsWhatsApp;
 
 $("downloadBillsExcel").onclick=downloadBillsExcel;
 
-$("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;$("billWeekDate").onchange=renderBills;
+$("billSearch").oninput=renderBills;$("billFilter").onchange=renderBills;
 
 $("closeBillPayment").onclick=()=>$("billPaymentModal").classList.add("hidden");
 $("saveBillPayment").onclick=async()=>{
@@ -1928,7 +1617,7 @@ function applyRoleNavigation(){
  const isMaster=!!profile?.is_master;
 
  // Approver sees operational/master menus, except Manajemen User.
- ["navWeekly","navBills","navApprovals","navStudents","navMenus","navAnalytics"].forEach(id=>{
+ ["navWeekly","navBills","navApprovals","navStudents","navMenus"].forEach(id=>{
    const el=$(id);
    if(el) el.classList.toggle("hidden", !isApprover);
  });
@@ -1941,7 +1630,7 @@ function applyRoleNavigation(){
  });
 
  const current=document.querySelector(".page:not(.hidden)");
- const restrictedForAdmin=["weeklyPage","analyticsPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
+ const restrictedForAdmin=["weeklyPage","billsPage","approvalsPage","studentsPage","menusPage","usersPage"];
  if(!isApprover && current && restrictedForAdmin.includes(current.id)){
    document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));
    $("dashboardPage").classList.remove("hidden");
@@ -1970,7 +1659,6 @@ function renderAll(){
  renderTodayOrders();
  renderOrderHistory();
  renderWeekly();
- renderMenuAnalytics();
  renderBills();
  renderPaymentSearch();
  renderPaymentsTable();
