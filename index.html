@@ -1215,7 +1215,7 @@ function renderBills(){
  const unpaid=active.filter(x=>x.activeBill>0);
  const deposit=active.filter(x=>x.deposit>0);
 
- $("billWeekLabel").innerHTML=`Tagihan aktif dihitung dari seluruh pesanan <b>Selesai</b> dikurangi seluruh pembayaran. Setelah saldo menjadi <b>0 (Lunas)</b>, pesanan berikutnya memulai tagihan baru dari nol.`;
+ $("billWeekLabel").innerHTML=`Tagihan aktif dihitung dari seluruh pesanan <b>Selesai</b> dikurangi seluruh pembayaran. Setelah saldo menjadi <b>0 (Lunas)</b>, pesanan berikutnya memulai tagihan baru dari nol. Khusus WhatsApp, sisa tagihan dibagi menurut <b>pekan asal pesanan</b>.`;
 
  $("billStats").innerHTML=`
  <div class="card stat"><div class="label">Siswa Belum Lunas</div><div class="value">${unpaid.length}</div></div>
@@ -1315,6 +1315,22 @@ function downloadBillsExcel(){
  XLSX.writeFile(wb,`Rekap-Tagihan-Aktif_${today}.xlsx`);
 }
 
+function mondayOfDate(dateString){
+ const d=new Date(dateString+"T00:00:00");
+ const day=d.getDay()||7;
+ d.setDate(d.getDate()-day+1);
+ return d;
+}
+
+function formatWaPeriod(start,end){
+ const s=new Date(start+"T00:00:00");
+ const e=new Date(end+"T00:00:00");
+ if(s.getMonth()===e.getMonth()&&s.getFullYear()===e.getFullYear()){
+   return `${s.toLocaleDateString("id-ID",{day:"numeric"})}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
+ }
+ return `${s.toLocaleDateString("id-ID",{day:"numeric",month:"long"})}–${e.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})}`;
+}
+
 function compactWaAmount(value){
  const n=Number(value||0);
  if(n>=1000000){
@@ -1328,23 +1344,86 @@ function compactWaAmount(value){
  return String(Math.round(n));
 }
 
-function shareBillsWhatsApp(){
- const rows=currentBillingRows()
-   .filter(x=>x.activeBill>0)
-   .sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
+function outstandingWeeksForWhatsApp(){
+ const weekKeys=new Set(
+   orders
+     .filter(o=>billableOrder(o))
+     .map(o=>iso(mondayOfDate(o.order_date)))
+ );
 
- if(!rows.length){
+ const groups=[];
+
+ [...weekKeys].sort().forEach(weekStart=>{
+   const base=new Date(weekStart+"T00:00:00");
+   const end=new Date(base);
+   end.setDate(end.getDate()+6);
+   const weekEnd=iso(end);
+
+   const rows=students.map(s=>{
+     const studentOrders=orders
+       .filter(o=>o.student_id===s.id&&billableOrder(o))
+       .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
+
+     const totalPayments=studentPaymentTotal(s.id,today);
+
+     const priorCharges=studentOrders
+       .filter(o=>o.order_date<weekStart)
+       .reduce((sum,o)=>sum+orderTotal(o),0);
+
+     const weekCharges=studentOrders
+       .filter(o=>o.order_date>=weekStart&&o.order_date<=weekEnd)
+       .reduce((sum,o)=>sum+orderTotal(o),0);
+
+     if(weekCharges<=0)return null;
+
+     const availableForWeek=Math.max(0,totalPayments-priorCharges);
+     const paidToWeek=Math.min(weekCharges,availableForWeek);
+     const outstanding=Math.max(0,weekCharges-paidToWeek);
+
+     if(outstanding<=0)return null;
+
+     return {
+       name:s.name,
+       class_name:s.class_name,
+       amount:outstanding
+     };
+   }).filter(Boolean);
+
+   if(rows.length){
+     rows.sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
+     groups.push({weekStart,weekEnd,rows});
+   }
+ });
+
+ return groups;
+}
+
+function shareBillsWhatsApp(){
+ const groups=outstandingWeeksForWhatsApp();
+
+ if(!groups.length){
    alert("Tidak ada tagihan aktif yang belum lunas.");
    return;
  }
 
- const lines=["*REKAP TAGIHAN AKTIF KIDSMEAL*",""];
- rows.forEach((x,i)=>{
-   lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.activeBill)}*`);
+ const lines=["*REKAP TAGIHAN KIDSMEAL*",""];
+
+ groups.forEach((g,index)=>{
+   lines.push(`*Tagihan periode ${formatWaPeriod(g.weekStart,g.weekEnd)}*`);
+   g.rows.forEach((x,i)=>{
+     lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.amount)}*`);
+   });
+   const subtotal=g.rows.reduce((sum,x)=>sum+Number(x.amount||0),0);
+   lines.push(`*Subtotal: ${compactWaAmount(subtotal)}*`);
+   if(index<groups.length-1)lines.push("");
  });
- const grand=rows.reduce((a,x)=>a+Number(x.activeBill||0),0);
+
+ const grandTotal=groups
+   .flatMap(g=>g.rows)
+   .reduce((sum,x)=>sum+Number(x.amount||0),0);
+
  lines.push("");
- lines.push(`*Total Seluruh Tagihan: ${compactWaAmount(grand)}*`);
+ lines.push(`*Total Seluruh Tagihan: ${compactWaAmount(grandTotal)}*`);
 
  const url=`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
  const w=window.open(url,"_blank");
