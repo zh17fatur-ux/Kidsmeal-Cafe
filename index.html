@@ -703,9 +703,25 @@ $("logoutBtn").onclick=()=>sb.auth.signOut();
 async function bootstrap(){
  const {data:{session:s}}=await sb.auth.getSession(); session=s;
  if(!session){showAuth();return}
- await loadProfile();showApp();await loadData();renderAll()
+ await loadProfile();
+ showApp();
+ await loadCoreData();
+ renderAll();
+ loadHistoryData();
 }
-sb.auth.onAuthStateChange(async(_event,s)=>{session=s;if(!s){profile=null;showAuth()}else{await loadProfile();showApp();await loadData();renderAll()}})
+sb.auth.onAuthStateChange(async(_event,s)=>{
+ session=s;
+ if(!s){
+   profile=null;
+   showAuth();
+ }else{
+   await loadProfile();
+   showApp();
+   await loadCoreData();
+   renderAll();
+   loadHistoryData();
+ }
+})
 
 async function loadProfile(){
  const {data,error}=await sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active").eq("id",session.user.id).single();
@@ -727,39 +743,113 @@ async function fetchAllRows(buildQuery,pageSize=1000){
  return all;
 }
 
-async function loadData(){
- try{
-   const [a,b,c,d,e]=await Promise.all([
-     sb.from("students").select("*").order("class_name").order("name"),
-     sb.from("menus").select("*").order("category").order("name"),
+let historyLoading=false;
+let historyLoaded=false;
 
-     // Ambil SELURUH riwayat pesanan secara bertahap.
-     // Tidak lagi dibatasi 500 baris, sehingga tagihan lama tetap ikut dihitung.
+async function loadCoreData(){
+ const results=await Promise.allSettled([
+   sb.from("students").select("*").order("class_name").order("name"),
+   sb.from("menus").select("*").order("category").order("name"),
+   sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active")
+ ]);
+
+ const [studentResult,menuResult,profileResult]=results;
+
+ if(studentResult.status==="fulfilled"&&!studentResult.value.error){
+   students=studentResult.value.data||[];
+ }else{
+   console.error("Gagal memuat siswa:",studentResult);
+ }
+
+ if(menuResult.status==="fulfilled"&&!menuResult.value.error){
+   menus=menuResult.value.data||[];
+ }else{
+   console.error("Gagal memuat menu:",menuResult);
+ }
+
+ if(profileResult.status==="fulfilled"&&!profileResult.value.error){
+   profiles=profileResult.value.data||[];
+ }else{
+   console.error("Gagal memuat profil user:",profileResult);
+ }
+}
+
+async function loadHistoryData(){
+ if(historyLoading)return;
+ historyLoading=true;
+
+ try{
+   const [orderResult,paymentResult]=await Promise.allSettled([
      fetchAllRows(()=>sb.from("orders")
        .select("*,students(name,class_name),order_items(*)")
        .order("order_date",{ascending:false})
        .order("created_at",{ascending:false})),
 
-     // Pembayaran juga dimuat penuh agar saldo/tagihan antarpekan selalu sinkron.
      fetchAllRows(()=>sb.from("payments")
        .select("*,students(name,class_name)")
        .order("payment_date",{ascending:false})
-       .order("created_at",{ascending:false})),
-
-     sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active")
+       .order("created_at",{ascending:false}))
    ]);
 
-   [a,b,e].forEach(x=>{if(x.error)console.error(x.error)});
-   students=a.data||[];
-   menus=b.data||[];
-   orders=Array.isArray(c)?c:[];
-   payments=Array.isArray(d)?d:[];
-   profiles=e.data||[];
+   let changed=false;
+
+   if(orderResult.status==="fulfilled"){
+     orders=Array.isArray(orderResult.value)?orderResult.value:[];
+     changed=true;
+   }else{
+     console.error("Gagal memuat riwayat pesanan:",orderResult.reason);
+   }
+
+   if(paymentResult.status==="fulfilled"){
+     payments=Array.isArray(paymentResult.value)?paymentResult.value:[];
+     changed=true;
+   }else{
+     console.error("Gagal memuat riwayat pembayaran:",paymentResult.reason);
+   }
+
+   historyLoaded=true;
+
+   // Jangan membuat seluruh aplikasi kosong hanya karena salah satu histori gagal.
+   if(changed)renderAll();
+
  }catch(error){
-   console.error("Gagal memuat seluruh riwayat:",error);
-   alert("Gagal menyinkronkan seluruh riwayat data. Silakan muat ulang aplikasi.");
+   console.error("Gagal memuat histori:",error);
+ }finally{
+   historyLoading=false;
  }
 }
+
+async function loadData(){
+ // Full refresh yang tetap aman: data inti dan histori tidak saling menggagalkan.
+ await loadCoreData();
+
+ const [orderResult,paymentResult]=await Promise.allSettled([
+   fetchAllRows(()=>sb.from("orders")
+     .select("*,students(name,class_name),order_items(*)")
+     .order("order_date",{ascending:false})
+     .order("created_at",{ascending:false})),
+
+   fetchAllRows(()=>sb.from("payments")
+     .select("*,students(name,class_name)")
+     .order("payment_date",{ascending:false})
+     .order("created_at",{ascending:false}))
+ ]);
+
+ if(orderResult.status==="fulfilled"){
+   orders=Array.isArray(orderResult.value)?orderResult.value:[];
+ }else{
+   console.error("Gagal refresh pesanan:",orderResult.reason);
+ }
+
+ if(paymentResult.status==="fulfilled"){
+   payments=Array.isArray(paymentResult.value)?paymentResult.value:[];
+ }else{
+   console.error("Gagal refresh pembayaran:",paymentResult.reason);
+ }
+
+ historyLoaded=true;
+}
+
 function profName(id){return profiles.find(p=>p.id===id)?.full_name||"-"}
 function orderTotal(o){return (o.order_items||[]).reduce((a,i)=>a+Number(i.unit_price)*Number(i.qty),0)}
 function activeOrder(o){return o.status!=="cancelled"}
@@ -810,7 +900,10 @@ function dashboardStatusControl(o){
 function renderDashboard(){
  const b=balances(),debt=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
  const todayOrders=orders.filter(o=>o.order_date===today&&billableOrder(o));
- $("dashboardPage").innerHTML=`<div class="grid four">
+ const historyNotice=!historyLoaded
+   ? '<div class="notice" style="margin-bottom:14px">⏳ Data utama sudah siap. Riwayat pesanan dan pembayaran sedang disinkronkan...</div>'
+   : "";
+ $("dashboardPage").innerHTML=historyNotice+`<div class="grid four">
  <div class="card stat"><div class="label">Pesanan Hari Ini</div><div class="value">${todayOrders.length}</div></div>
  <div class="card stat"><div class="label">Penjualan Hari Ini</div><div class="value">${rp(todayOrders.reduce((a,o)=>a+orderTotal(o),0))}</div></div>
  <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(debt.reduce((a,x)=>a+x.balance,0))}</div></div>
