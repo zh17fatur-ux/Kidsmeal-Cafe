@@ -1046,11 +1046,10 @@ async function saveOrderNow(){
  if(!selectedStudentId)return alert("Pilih siswa.");
  if(!items.length)return alert("Pilih menu.");
  $("saveOrder").disabled=true;
- const {data:o,error}=await sb.from("orders").insert({student_id:selectedStudentId,order_date:$("orderDate").value,status:"active",progress_status:"preparing",is_breakfast:$("isBreakfastOrder").checked,order_note:$("orderNote").value.trim()||null,created_by:session.user.id}).select().single();
- if(error){$("saveOrder").disabled=false;return alert(error.message)}
- const rows=items.map(([id,qty])=>{const m=menus.find(x=>x.id===id);return{order_id:o.id,menu_id:m.id,menu_name:m.name,unit_price:m.price,qty}});
- const {error:e2}=await sb.from("order_items").insert(rows);$("saveOrder").disabled=false;
- if(e2)return alert(e2.message);
+ // Pesanan & item disimpan dalam satu transaksi di database: gagal satu, batal semua.
+ const {error}=await sb.rpc("create_order_with_items",{p_student_id:selectedStudentId,p_order_date:$("orderDate").value,p_is_breakfast:$("isBreakfastOrder").checked,p_order_note:$("orderNote").value,p_items:items.map(([menu_id,qty])=>({menu_id,qty}))});
+ $("saveOrder").disabled=false;
+ if(error)return alert(error.message);
  cart={};selectedStudentId=null;pendingOrderDebtWeeks=[];$("isBreakfastOrder").checked=false;$("orderNote").value="";$("selectedStudent").textContent="Belum ada siswa dipilih.";closeOrderDebtModal();await loadData();renderAll();renderMenusForOrder();alert("Pesanan tersimpan online.");
 }
 
