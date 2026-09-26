@@ -582,11 +582,17 @@ main{padding:22px;min-width:0}.top{display:flex;justify-content:space-between;ga
     </section>
 
     <section id="studentsPage" class="page hidden">
+      <div id="promotionCard" class="card hidden" style="margin-bottom:14px">
+        <h3 style="margin-top:0">Menunggu Verifikasi Kenaikan Kelas</h3>
+        <div class="muted" style="margin-bottom:10px">Kelulusan dan kenaikan TK A ke TK B perlu diverifikasi. Pilih <b>Tetap</b> bila siswa tidak naik / belum lulus.</div>
+        <div class="tablewrap"><table id="promotionTable"></table></div>
+      </div>
+      <datalist id="classOptions"><option>PG</option><option>TK A</option><option>TK B1</option><option>TK B2</option><option>TK B3</option><option>1A</option><option>1B</option><option>2A</option><option>2B</option><option>2C</option><option>2D</option><option>3A</option><option>3B</option><option>3C</option><option>4A</option><option>4B</option><option>4C</option><option>5A</option><option>5B</option><option>5C</option><option>6A</option><option>6B</option><option>6C</option><option>SMP 7</option><option>SMP 8</option><option>SMP 9</option></datalist>
       <div class="grid two">
         <div class="card">
           <h3 style="margin-top:0">Tambah Siswa</h3>
           <div class="field"><label>Nama</label><input id="newStudentName"></div>
-          <div class="field"><label>Kelas</label><input id="newStudentClass"></div>
+          <div class="field"><label>Kelas</label><input id="newStudentClass" list="classOptions" placeholder="mis. 3B, TK B1, SMP 7"></div>
           <button id="addStudent" class="btn primary">Tambah</button>
           <div class="notice" style="margin-top:14px">Untuk menjaga histori transaksi, siswa yang tidak lagi digunakan sebaiknya <b>dinonaktifkan</b>, bukan dihapus permanen.</div>
         </div>
@@ -1703,12 +1709,37 @@ function renderStudents(){
  const list=students.filter(s=>!q||(s.name+" "+s.class_name).toLowerCase().includes(q)).filter(s=>f==="all"||(f==="active"?s.active:!s.active));
  $("studentsTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas</th><th>Status</th><th></th></tr></thead><tbody>${list.map(s=>`<tr>
  <td><input data-sname="${s.id}" value="${esc(s.name)}"></td>
- <td><input data-sclass="${s.id}" value="${esc(s.class_name)}"></td>
+ <td><input data-sclass="${s.id}" list="classOptions" value="${esc(s.class_name)}"></td>
  <td>${s.active?'<span class="pill" style="background:#ecfdf5;color:#047857">Aktif</span>':'<span class="pill">Nonaktif</span>'}</td>
  <td><div class="flex"><button class="btn small" data-ssave="${s.id}">Simpan</button><button class="btn small ${s.active?"danger":""}" data-stoggle="${s.id}">${s.active?"Nonaktifkan":"Aktifkan"}</button></div></td>
  </tr>`).join("")||'<tr><td colspan="4" class="empty">Tidak ada data</td></tr>'}</tbody>`;
  document.querySelectorAll("[data-ssave]").forEach(b=>b.onclick=async()=>{const id=b.dataset.ssave,name=document.querySelector(`[data-sname="${id}"]`).value.trim(),class_name=document.querySelector(`[data-sclass="${id}"]`).value.trim();if(!name)return alert("Nama siswa tidak boleh kosong.");const {error}=await sb.from("students").update({name,class_name,updated_at:new Date().toISOString()}).eq("id",id);if(error)return alert(error.message);await loadData();renderAll();alert("Data siswa disimpan.")});
  document.querySelectorAll("[data-stoggle]").forEach(b=>b.onclick=async()=>{const s=students.find(x=>x.id===b.dataset.stoggle);if(!s)return;if(!confirm(`${s.active?"Nonaktifkan":"Aktifkan kembali"} ${s.name}?`))return;const {error}=await sb.from("students").update({active:!s.active,updated_at:new Date().toISOString()}).eq("id",s.id);if(error)return alert(error.message);await loadData();renderAll()});
+ renderPromotions();
+}
+// Kenaikan kelas 1 Juli: kelulusan & TK A → TK B menunggu verifikasi admin
+function renderPromotions(){
+ const list=students.filter(s=>s.promotion_pending).sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"","id",{numeric:true})||(a.name||"").localeCompare(b.name||"","id"));
+ $("promotionCard").classList.toggle("hidden",!list.length);
+ if(!list.length)return;
+ $("promotionTable").innerHTML=`<thead><tr><th>Nama</th><th>Kelas Sekarang</th><th>Menjadi</th><th></th></tr></thead><tbody>${list.map(s=>`<tr>
+ <td><b>${esc(s.name)}</b></td>
+ <td>${esc(s.class_name)}</td>
+ <td>${s.promotion_pending==="TK B"?`<select data-pclass="${s.id}"><option value="">Pilih kelas…</option><option>TK B1</option><option>TK B2</option><option>TK B3</option></select>`:`<span class="pill">${esc(s.promotion_pending)}</span>`}</td>
+ <td><div class="flex"><button class="btn small primary" data-papprove="${s.id}">${s.promotion_pending.startsWith("Lulus")?"Luluskan":"Naikkan"}</button><button class="btn small" data-pstay="${s.id}">Tetap</button></div></td>
+ </tr>`).join("")}</tbody>`;
+ const verify=async(id,approve)=>{
+   const s=students.find(x=>x.id===id);if(!s)return;
+   const cls=document.querySelector(`[data-pclass="${id}"]`)?.value||null;
+   if(approve&&s.promotion_pending==="TK B"&&!cls)return alert("Pilih kelas TK B terlebih dahulu.");
+   const label=approve?(s.promotion_pending.startsWith("Lulus")?`Luluskan ${s.name} (${s.promotion_pending})? Siswa akan dinonaktifkan.`:`Naikkan ${s.name} ke ${cls}?`):`${s.name} tetap di ${s.class_name}?`;
+   if(!confirm(label))return;
+   const {error}=await sb.rpc("verify_student_promotion",{p_student:id,p_approve:approve,p_class:cls});
+   if(error)return alert(error.message);
+   await loadData();renderAll();
+ };
+ document.querySelectorAll("[data-papprove]").forEach(b=>b.onclick=()=>verify(b.dataset.papprove,true));
+ document.querySelectorAll("[data-pstay]").forEach(b=>b.onclick=()=>verify(b.dataset.pstay,false));
 }
 $("studentDataSearch").oninput=renderStudents;
 $("studentStatusFilter").onchange=renderStudents;
