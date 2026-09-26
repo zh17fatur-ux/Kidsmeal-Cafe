@@ -697,13 +697,13 @@ function showApp(){ $("authView").classList.add("hidden");$("appView").classList
 $("showSignupBtn").onclick=()=>{$("authNameField").classList.remove("hidden");$("signupBtn").classList.remove("hidden");$("backLoginBtn").classList.remove("hidden");$("loginBtn").classList.add("hidden");$("showSignupBtn").classList.add("hidden");msg("",false)}
 $("backLoginBtn").onclick=()=>{$("authNameField").classList.add("hidden");$("signupBtn").classList.add("hidden");$("backLoginBtn").classList.add("hidden");$("loginBtn").classList.remove("hidden");$("showSignupBtn").classList.remove("hidden");msg("",false)}
 $("loginBtn").onclick=async()=>{msg("Sedang login...");const {error}=await sb.auth.signInWithPassword({email:$("authEmail").value.trim(),password:$("authPassword").value});if(error)return msg(error.message);msg("",false)}
-$("signupBtn").onclick=async()=>{const email=$("authEmail").value.trim(),password=$("authPassword").value,name=$("authName").value.trim();if(!name)return msg("Isi nama lengkap.");const {data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)return msg(error.message);msg(data.session?"Akun dibuat dan langsung login.":"Akun dibuat. Jika verifikasi email aktif, cek email sebelum login.")}
+$("signupBtn").onclick=async()=>{const email=$("authEmail").value.trim(),password=$("authPassword").value,name=$("authName").value.trim();if(!name)return msg("Isi nama lengkap.");const {data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)return msg(error.message);msg(data.session?"Akun dibuat. Akun baru perlu diaktifkan oleh Master Account sebelum bisa dipakai.":"Akun dibuat. Verifikasi email Anda, lalu minta Master Account mengaktifkan akun sebelum login.")}
 $("logoutBtn").onclick=()=>sb.auth.signOut();
 
 async function bootstrap(){
  const {data:{session:s}}=await sb.auth.getSession(); session=s;
  if(!session){showAuth();return}
- await loadProfile();
+ if(!await loadProfile())return;
  showApp();
  await loadCoreData();
  renderAll();
@@ -715,7 +715,7 @@ sb.auth.onAuthStateChange(async(_event,s)=>{
    profile=null;
    showAuth();
  }else{
-   await loadProfile();
+   if(!await loadProfile())return;
    showApp();
    await loadCoreData();
    renderAll();
@@ -725,8 +725,15 @@ sb.auth.onAuthStateChange(async(_event,s)=>{
 
 async function loadProfile(){
  const {data,error}=await sb.from("profiles").select("id,full_name,role,email,created_at,is_master,active").eq("id",session.user.id).single();
- if(error){console.error(error);return}
+ if(error){console.error(error);return false}
+ if(!data.active){
+   profile=null;showAuth();
+   msg("Akun Anda belum aktif. Minta Master Account mengaktifkan akun ini di menu Manajemen User.");
+   await sb.auth.signOut();
+   return false;
+ }
  profile=data;$("currentUserName").textContent=profile.full_name;$("currentRole").textContent=profile.is_master?"Master Account":(profile.role==="approver"?"Approver":"Admin");
+ return true;
 }
 async function fetchAllRows(buildQuery,pageSize=1000){
  const all=[];
