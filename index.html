@@ -1713,6 +1713,7 @@ function outstandingWeeksForWhatsApp(){
      if(outstanding<=0)return null;
 
      return {
+       id:s.id,
        name:s.name,
        class_name:s.class_name,
        amount:outstanding
@@ -1728,6 +1729,24 @@ function outstandingWeeksForWhatsApp(){
  return groups;
 }
 
+function shortWaPeriod(start,end){
+ const s=new Date(start+"T00:00:00"),e=new Date(end+"T00:00:00");
+ const d=x=>x.toLocaleDateString("id-ID",{day:"numeric"}),m=x=>x.toLocaleDateString("id-ID",{month:"short"}).replace(".","");
+ return s.getMonth()===e.getMonth()?`${d(s)}–${d(e)} ${m(e)}`:`${d(s)} ${m(s)}–${d(e)} ${m(e)}`;
+}
+// Urutan kelas: PG, TK A, TK B, SD 1A–6C, SMP 7–9, lainnya
+function classSortKey(c){
+ c=c||"";
+ if(c==="PG")return "0";
+ if(/^TK A/.test(c))return "1"+c;
+ if(/^TK B/.test(c))return "2"+c;
+ if(/^[1-6][A-Z]$/.test(c))return "3"+c;
+ if(/^SMP/.test(c))return "4"+c;
+ return "5"+c;
+}
+
+// Rekap WhatsApp: per kelas, tiap anak muncul sekali dengan total tagihannya.
+// Anak dengan tagihan di beberapa pekan diberi rincian; ⚠️ = pekan sebelumnya.
 function shareBillsWhatsApp(){
  const groups=outstandingWeeksForWhatsApp();
 
@@ -1736,24 +1755,40 @@ function shareBillsWhatsApp(){
    return;
  }
 
- const lines=["*REKAP TAGIHAN KIDSMEAL*",""];
+ const thisWeek=iso(mondayOfDate(today));
+ const byStudent=new Map();
+ groups.forEach(g=>g.rows.forEach(x=>{
+   if(!byStudent.has(x.id))byStudent.set(x.id,{name:x.name,class_name:x.class_name,items:[]});
+   byStudent.get(x.id).items.push({period:shortWaPeriod(g.weekStart,g.weekEnd),amount:Number(x.amount||0),old:g.weekStart<thisWeek});
+ }));
 
- groups.forEach((g,index)=>{
-   lines.push(`*Tagihan periode ${formatWaPeriod(g.weekStart,g.weekEnd)}*`);
-   g.rows.forEach((x,i)=>{
-     lines.push(`${i+1}. ${x.name} (${x.class_name}): *${compactWaAmount(x.amount)}*`);
-   });
-   const subtotal=g.rows.reduce((sum,x)=>sum+Number(x.amount||0),0);
-   lines.push(`*Subtotal: ${compactWaAmount(subtotal)}*`);
-   if(index<groups.length-1)lines.push("");
+ const byClass=new Map();
+ [...byStudent.values()].forEach(s=>{
+   const c=s.class_name||"-";
+   if(!byClass.has(c))byClass.set(c,[]);
+   byClass.get(c).push(s);
  });
 
- const grandTotal=groups
-   .flatMap(g=>g.rows)
-   .reduce((sum,x)=>sum+Number(x.amount||0),0);
+ const tanggal=new Date(today+"T00:00:00").toLocaleDateString("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+ const lines=["*REKAP TAGIHAN KIDSMEAL*",`_Per ${tanggal}_`];
+ let adaTunggakan=false;
 
- lines.push("");
- lines.push(`*Total Seluruh Tagihan: ${compactWaAmount(grandTotal)}*`);
+ [...byClass.keys()].sort((a,b)=>classSortKey(a).localeCompare(classSortKey(b),"id",{numeric:true})).forEach(c=>{
+   lines.push("",`*KELAS ${c}*`);
+   byClass.get(c).sort((a,b)=>(a.name||"").localeCompare(b.name||"","id")).forEach((s,i)=>{
+     const total=s.items.reduce((sum,x)=>sum+x.amount,0);
+     if(s.items.some(x=>x.old))adaTunggakan=true;
+     if(s.items.length===1){
+       const x=s.items[0];
+       lines.push(`${i+1}. ${s.name}: *${compactWaAmount(total)}*${x.old?` ⚠️ _${x.period}_`:""}`);
+     }else{
+       lines.push(`${i+1}. ${s.name}: *${compactWaAmount(total)}*`);
+       s.items.forEach(x=>lines.push(`    ${x.old?"⚠️":"•"} ${x.period}: ${compactWaAmount(x.amount)}`));
+     }
+   });
+ });
+
+ if(adaTunggakan)lines.push("","_⚠️ = tagihan pekan sebelumnya, mohon didahulukan_");
 
  const url=`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
  const w=window.open(url,"_blank");
