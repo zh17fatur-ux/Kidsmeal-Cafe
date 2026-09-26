@@ -690,8 +690,18 @@ const $=id=>document.getElementById(id);
 const rp=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(n||0));
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
 const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
-const today=iso(new Date());
+let today=iso(new Date());
 $("orderDate").value=today;$("paymentDate").value=today;$("weekDate").value=today;
+// Aplikasi sering dibiarkan terbuka semalaman: perbarui "hari ini" saat tanggal berganti,
+// supaya pembayaran bertanggal hari baru langsung ikut terhitung.
+function refreshToday(){
+ const t=iso(new Date());if(t===today)return;
+ const old=today;today=t;
+ ["orderDate","paymentDate","weekDate","billPaymentDate"].forEach(id=>{if($(id).value===old)$(id).value=t});
+ if(session)renderAll();
+}
+setInterval(refreshToday,60000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshToday()});
 
 let session=null,profile=null,students=[],menus=[],orders=[],payments=[],profiles=[];
 let selectedStudentId=null,selectedPaymentStudentId=null,cart={},cancelTarget=null,approvalTarget=null;
@@ -873,12 +883,50 @@ function studentPaymentTotal(studentId,asOf=today){
    .reduce((sum,p)=>sum+Number(p.amount||0),0);
 }
 
+// Saldo siswa. Tagihan = pesanan Selesai − pembayaran.
+// Pembayaran yang menutupi pesanan yang masih "Sementara Dibuat" ditampilkan sebagai
+// "Dibayar di muka", bukan deposit; deposit hanya kelebihan di atas semua pesanan.
+function pendingOrderTotal(studentId){
+ return orders.filter(o=>o.student_id===studentId&&o.status!=="cancelled"&&o.progress_status!=="completed").reduce((a,o)=>a+orderTotal(o),0);
+}
+function saldoInfo(studentId){
+ const total=orders.filter(o=>o.student_id===studentId&&billableOrder(o)).reduce((a,o)=>a+orderTotal(o),0);
+ const paid=studentPaymentTotal(studentId,today);
+ const balance=total-paid;
+ const pending=pendingOrderTotal(studentId);
+ const prepaid=Math.min(pending,Math.max(0,-balance));
+ return {total,paid,balance,pending,prepaid,activeBill:Math.max(0,balance),deposit:Math.max(0,-balance-pending)};
+}
+function saldoLabel(x){
+ if(x.activeBill>0)return "Tagihan "+rp(x.activeBill);
+ if(x.deposit>0)return "Deposit "+rp(x.deposit)+(x.prepaid>0?" + dibayar di muka "+rp(x.prepaid):"");
+ if(x.prepaid>0)return "Dibayar di muka "+rp(x.prepaid);
+ return "Lunas";
+}
 function balances(){
- return students.map(s=>{
-  const total=orders.filter(o=>o.student_id===s.id&&billableOrder(o)).reduce((a,o)=>a+orderTotal(o),0);
-  const paid=studentPaymentTotal(s.id,today);
-  return {...s,total,paid,balance:total-paid}
- })
+ return students.map(s=>({...s,...saldoInfo(s.id)}));
+}
+// Pengaman sebelum menyimpan pembayaran: cegah catatan dobel & kelebihan bayar yang tidak disengaja.
+async function confirmPayment(studentId,amount,dateStr){
+ if(dateStr>today&&!confirm(`Tanggal pembayaran ${dateStr} ada di masa depan. Pembayaran baru dihitung pada tanggal tersebut.\n\nLanjutkan?`))return false;
+ const since=new Date(Date.now()-10*60000).toISOString();
+ const {data:recent,error}=await sb.from("payments").select("created_at").eq("student_id",studentId).eq("amount",amount).gte("created_at",since).order("created_at",{ascending:false}).limit(1);
+ if(error){alert("Gagal memeriksa pembayaran sebelumnya: "+error.message);return false}
+ if(recent?.length){
+   const jam=new Date(recent[0].created_at).toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"});
+   if(!confirm(`Pembayaran ${rp(amount)} untuk siswa ini SUDAH dicatat pukul ${jam}.\n\nSimpan lagi? Pilih Batal bila tidak ingin tercatat dua kali.`))return false;
+ }
+ const s=saldoInfo(studentId);
+ const lebih=amount-s.activeBill;
+ if(lebih>0){
+   const untukPesanan=Math.min(lebih,Math.max(0,s.pending-s.prepaid));
+   const deposit=lebih-untukPesanan;
+   let m=`Tagihan saat ini ${rp(s.activeBill)}, pembayaran ${rp(amount)}.`;
+   if(untukPesanan>0)m+=`\n\n${rp(untukPesanan)} untuk pesanan yang masih "Sementara Dibuat". Tandai pesanan tersebut Selesai agar masuk tagihan.`;
+   if(deposit>0)m+=`\n\nKelebihan ${rp(deposit)} akan menjadi DEPOSIT.`;
+   if(!confirm(m+"\n\nLanjutkan?"))return false;
+ }
+ return true;
 }
 function statusBadge(o){
  if(o.status==="cancel_pending")return '<span class="pill" style="background:#fff7ed;color:#b45309">Menunggu Persetujuan</span>';
@@ -911,7 +959,7 @@ function dashboardStatusControl(o){
  return todayStatusBadge(o);
 }
 function renderDashboard(){
- const b=balances(),debt=b.filter(x=>x.balance>0),dep=b.filter(x=>x.balance<0);
+ const b=balances(),debt=b.filter(x=>x.balance>0),dep=b.filter(x=>x.deposit>0);
  const todayOrders=orders.filter(o=>o.order_date===today&&billableOrder(o));
  const historyNotice=!historyLoaded
    ? '<div class="notice" style="margin-bottom:14px">⏳ Data utama sudah siap. Riwayat pesanan dan pembayaran sedang disinkronkan...</div>'
@@ -920,7 +968,7 @@ function renderDashboard(){
  <div class="card stat"><div class="label">Pesanan Hari Ini</div><div class="value">${todayOrders.length}</div></div>
  <div class="card stat"><div class="label">Penjualan Hari Ini</div><div class="value">${rp(todayOrders.reduce((a,o)=>a+orderTotal(o),0))}</div></div>
  <div class="card stat"><div class="label">Total Tagihan Aktif</div><div class="value">${rp(debt.reduce((a,x)=>a+x.balance,0))}</div></div>
- <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(Math.abs(dep.reduce((a,x)=>a+x.balance,0)))}</div></div>
+ <div class="card stat"><div class="label">Total Deposit</div><div class="value">${rp(dep.reduce((a,x)=>a+x.deposit,0))}</div></div>
  </div>
  <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Aktivitas Terakhir</h3><div class="muted" style="font-size:12px;margin-bottom:10px">Pesanan tanggal sebelumnya yang baru diinput hari ini dapat ditandai Selesai oleh Admin/Approver dari Dashboard. Sementara Dibuat belum menjadi tagihan; Selesai masuk tagihan dan Rekap Mingguan.</div><div class="tablewrap"><table><thead><tr><th>Tanggal</th><th>Siswa</th><th>Pesanan</th><th>Status Pesanan</th><th class="money">Total</th></tr></thead><tbody>${orders.slice(0,12).map(o=>`<tr><td>${o.order_date}</td><td>${esc(o.students?.name||"-")}<div class="muted">${esc(o.students?.class_name||"")}</div></td><td>${o.order_items.map(i=>`<span class="tag">${esc(i.menu_name)} ×${i.qty}</span>`).join("")}${orderNoteHtml(o)}</td><td>${dashboardStatusControl(o)}</td><td class="money">${rp(orderTotal(o))}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Belum ada transaksi</td></tr>'}</tbody></table></div></div>`;
 
@@ -1287,36 +1335,26 @@ $("weekDate").onchange=renderWeekly;$("weekClass").onchange=renderWeekly;
 let billPaymentTargetId=null;
 function currentBillingRows(){
  return students.map(s=>{
-   const completedOrders=orders
-     .filter(o=>o.student_id===s.id&&billableOrder(o))
-     .sort((a,b)=>a.order_date.localeCompare(b.order_date)||new Date(a.created_at)-new Date(b.created_at));
-
-   const totalCharges=completedOrders.reduce((sum,o)=>sum+orderTotal(o),0);
-   const totalPayments=studentPaymentTotal(s.id,today);
-   const balance=totalCharges-totalPayments;
-
-   // Siklus sederhana:
-   // pembayaran menutup seluruh tagihan lama terlebih dahulu.
-   // Bila balance <= 0, siswa dianggap LUNAS dan pesanan berikutnya
-   // otomatis memulai siklus tagihan baru dari nol.
-   const activeBill=Math.max(0,balance);
-   const deposit=Math.max(0,-balance);
-
+   // Pembayaran menutup seluruh tagihan lama terlebih dahulu. Bila saldo <= 0 siswa LUNAS
+   // dan pesanan berikutnya memulai tagihan baru dari nol.
+   const x=saldoInfo(s.id);
    return {
      id:s.id,
      name:s.name,
      class_name:s.class_name,
-     totalCharges,
-     totalPayments,
-     activeBill,
-     deposit
+     totalCharges:x.total,
+     totalPayments:x.paid,
+     activeBill:x.activeBill,
+     deposit:x.deposit,
+     prepaid:x.prepaid,
+     pending:x.pending
    };
  });
 }
 
 function renderBills(){
  const allRows=currentBillingRows();
- const active=allRows.filter(x=>x.activeBill>0||x.deposit>0);
+ const active=allRows.filter(x=>x.activeBill>0||x.deposit>0||x.prepaid>0);
  const unpaid=active.filter(x=>x.activeBill>0);
  const deposit=active.filter(x=>x.deposit>0);
 
@@ -1347,14 +1385,11 @@ function renderBills(){
    <td>${esc(x.class_name)}</td>
    <td class="money">${rp(x.totalCharges)}</td>
    <td class="money positive">${rp(x.totalPayments)}</td>
-   <td class="money ${x.activeBill>0?"negative":"positive"}"><b>${
-     x.activeBill>0 ? "Tagihan "+rp(x.activeBill) :
-     x.deposit>0 ? "Deposit "+rp(x.deposit) : "Lunas"
-   }</b></td>
+   <td class="money ${x.activeBill>0?"negative":"positive"}"><b>${saldoLabel(x)}</b>${x.pending>0?`<div class="muted" style="font-weight:400">Pesanan belum Selesai: ${rp(x.pending)}</div>`:""}</td>
    ${canPay?`<td>${
      x.activeBill>0
        ? `<button class="btn small primary bill-pay-btn" data-bill-pay="${x.id}">Bayar Tagihan</button>`
-       : `<span class="muted">${x.deposit>0?"Deposit":"Lunas"}</span>`
+       : `<span class="muted">${x.deposit>0?"Deposit":x.prepaid>0?"Dibayar di muka":"Lunas"}</span>`
    }</td>`:""}
  </tr>`).join("")||`<tr><td colspan="${canPay?6:5}" class="empty">Semua siswa sudah lunas</td></tr>`}</tbody>`;
 
@@ -1547,7 +1582,9 @@ $("saveBillPayment").onclick=async()=>{
  if(!billPaymentTargetId)return alert("Pilih siswa.");
  const amount=Number($("billPaymentAmount").value);
  if(!(amount>0))return alert("Isi nominal pembayaran.");
+ if($("saveBillPayment").disabled)return;
  $("saveBillPayment").disabled=true;
+ if(!await confirmPayment(billPaymentTargetId,amount,$("billPaymentDate").value)){$("saveBillPayment").disabled=false;return}
  const {error}=await sb.from("payments").insert({
    student_id:billPaymentTargetId,
    payment_date:$("billPaymentDate").value,
@@ -1566,6 +1603,11 @@ $("saveBillPayment").onclick=async()=>{
 };
 
 
+function paymentSummaryDetail(s){
+ return `Pesanan Selesai: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}`
+  +(s.pending>0?`<br>Pesanan belum Selesai: ${rp(s.pending)} <span class="muted">(belum masuk tagihan)</span>`:"")
+  +`<br><b class="${s.activeBill>0?"negative":"positive"}">${s.activeBill>0?"Sisa tagihan: "+rp(s.activeBill):saldoLabel(s)}</b>`;
+}
 function renderPaymentSearch(){
  const q=$("paymentSearch").value.toLowerCase().trim();
  const b=balances();
@@ -1581,7 +1623,7 @@ function renderPaymentSearch(){
        <b>${esc(s.name)}</b>${selectedPaymentStudentId===s.id?'<span class="selected-badge">Dipilih</span>':""}
        <div class="muted">${esc(s.class_name)}</div>
      </div>
-     <span class="pill">${s.balance>0?"Tagihan "+rp(s.balance):s.balance<0?"Deposit "+rp(Math.abs(s.balance)):"Lunas"}</span>
+     <span class="pill">${saldoLabel(s)}</span>
    </div>
  `).join("") || '<div class="empty">'+(!students.length?'Belum ada data siswa':'Tidak ditemukan')+'</div>';
 
@@ -1591,7 +1633,7 @@ function renderPaymentSearch(){
      const s=b.find(z=>z.id===selectedPaymentStudentId);
      if(s){
        $("paymentSearch").value=s.name;
-       $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+       $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>${paymentSummaryDetail(s)}`;
      }
      renderPaymentSearch();
      renderPaymentsTable();
@@ -1603,7 +1645,7 @@ function renderPaymentSearch(){
  }else if(selectedPaymentStudentId){
    const s=b.find(z=>z.id===selectedPaymentStudentId);
    if(s){
-     $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>Total tagihan: ${rp(s.total)} • Sudah dibayar: ${rp(s.paid)}<br><b class="${s.balance>0?"negative":"positive"}">${s.balance>0?"Sisa tagihan: "+rp(s.balance):s.balance<0?"Deposit: "+rp(Math.abs(s.balance)):"Lunas"}</b>`;
+     $("paymentSummary").classList.add("payment-summary-selected");$("paymentSummary").innerHTML=`<b style="font-size:15px">${esc(s.name)} • ${esc(s.class_name)}</b> <span class="selected-badge">Dipilih</span><br>${paymentSummaryDetail(s)}`;
    }
  }else{
    $("paymentSummary").classList.remove("payment-summary-selected");$("paymentSummary").innerHTML='Pilih siswa untuk melihat tagihan.';
@@ -1692,7 +1734,18 @@ function renderPaymentsTable(){
    `).join("")||`<div class="empty">${selectedPaymentStudentId?"Belum ada pembayaran tercatat sejak 10 Agustus 2026":"Pilih siswa untuk melihat riwayat pembayaran"}</div>`;
  }
 }
-$("savePayment").onclick=async()=>{if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});if(error)return alert(error.message);$("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.")}
+$("savePayment").onclick=async()=>{
+ if(!selectedPaymentStudentId)return alert("Pilih siswa terlebih dahulu.");
+ const amount=Number($("paymentAmount").value);if(!(amount>0))return alert("Isi nominal.");
+ const btn=$("savePayment");if(btn.disabled)return;
+ btn.disabled=true; // cegah tersimpan dua kali karena tombol ditekan berulang
+ try{
+   if(!await confirmPayment(selectedPaymentStudentId,amount,$("paymentDate").value))return;
+   const {error}=await sb.from("payments").insert({student_id:selectedPaymentStudentId,payment_date:$("paymentDate").value,amount,method:$("paymentMethod").value,note:$("paymentNote").value.trim(),created_by:session.user.id});
+   if(error)return alert(error.message);
+   $("paymentAmount").value="";$("paymentNote").value="";await loadData();renderAll();alert("Pembayaran tersimpan online.");
+ }finally{btn.disabled=false}
+}
 
 function renderApprovals(){
  const pending=orders.filter(o=>o.status==="cancel_pending");$("approvalNotice").innerHTML=profile?.role==="approver"?`Anda login sebagai <b>Approver</b>. Approver hanya melakukan <b>Setujui/Tolak</b> atas pembatalan yang diajukan Admin.`:`Anda login sebagai <b>Admin</b>. Admin dapat mengajukan pembatalan, tetapi keputusan hanya dapat dilakukan oleh akun Approver.`;

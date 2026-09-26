@@ -1,4 +1,4 @@
-const CACHE_NAME = "kidsmeal-shell-v52";
+const CACHE_NAME = "kidsmeal-shell-v53";
 const SHELL = [
   "/",
   "/index.html",
